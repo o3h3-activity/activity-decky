@@ -1,0 +1,164 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  DECKY_CLI_VERSION: "0.0.8"
+
+jobs:
+  backend:
+    name: Python ${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.14"]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@v7
+        with:
+          version: "0.12.5"
+          python-version: ${{ matrix.python-version }}
+          enable-cache: true
+      - name: Lint Python
+        if: matrix.python-version == '3.11'
+        run: uv run --locked ruff check .
+      - name: Check Python formatting
+        if: matrix.python-version == '3.11'
+        run: uv run --locked ruff format --check .
+      - name: Type-check Python
+        if: matrix.python-version == '3.11'
+        run: uv run --locked basedpyright
+      - name: Test Python
+        run: uv run --locked python -m unittest discover -s tests
+
+  frontend:
+    name: Frontend quality
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+        with:
+          version: "12.5.1"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Lint and type-check frontend
+        run: pnpm run lint:frontend
+      - name: Test frontend
+        run: pnpm run test:frontend
+
+  build:
+    name: Build Activity package
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out plugin source
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Configure game-anatomy checkout
+        env:
+          GAME_ANATOMY_READ_TOKEN: ${{ secrets.GAME_ANATOMY_READ_TOKEN }}
+        run: |
+          if [ -n "$GAME_ANATOMY_READ_TOKEN" ]; then
+            git config --global url."https://x-access-token:${GAME_ANATOMY_READ_TOKEN}@github.com/".insteadOf "git@github.com:"
+          else
+            git config --global url."https://github.com/".insteadOf "git@github.com:"
+          fi
+          git submodule update --init --recursive
+
+      - name: Install official Decky CLI
+        run: |
+          mkdir -p /tmp/decky-cli
+          curl -fL -o /tmp/decky-cli/decky "https://github.com/SteamDeckHomebrew/cli/releases/download/${DECKY_CLI_VERSION}/decky-linux-x86_64"
+          chmod +x /tmp/decky-cli/decky
+          echo "/tmp/decky-cli" >> "$GITHUB_PATH"
+
+      - name: Build plugin with Decky CLI
+        run: decky plugin build . --output-path out
+
+      - name: Set up packaged smoke test
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Exercise packaged game identification
+        run: |
+          python - <<'PY'
+          import asyncio
+          import logging
+          import sys
+          import tempfile
+          import zipfile
+          from pathlib import Path
+
+          with tempfile.TemporaryDirectory() as directory:
+              root = Path(directory)
+              with zipfile.ZipFile("out/Activity.zip") as archive:
+                  archive.getinfo("Activity/bin/game-anatomy.LICENSE")
+                  archive.extractall(root)
+              sys.path.insert(0, str(root / "Activity" / "py_modules"))
+              from activity_backend.modules.identity.adapters.native import GameAnatomyNativeOperations
+              from activity_backend.modules.identity.service import GameIdentityBatch
+
+              identities = GameIdentityBatch(root, GameAnatomyNativeOperations(root / "Activity"), logging.getLogger("smoke"))
+              assert asyncio.run(identities.handshake())
+              rom = root / "game.pbp"
+              rom.write_bytes(b"\0PBP" + b"B" * 1020)
+              assert identities.compute([{"appId": 42, "path": str(rom)}]) == [{
+                  "appId": 42,
+                  "platform": "psp",
+                  "game_identity_md5": "67c125036bf47ede8ce642c05f304fb0",
+                  "rcheevos_id": 41,
+                  "serial": None,
+              }]
+              rom.write_bytes(b"NOPE")
+              assert identities.compute([{"appId": 43, "path": str(rom)}]) == []
+              print("Packaged game-anatomy startup, hash and identity mapping passed")
+          PY
+
+      - name: Prepare artifact contents
+        run: python -m zipfile -e out/Activity.zip artifact
+
+      - name: Upload installable package
+        uses: actions/upload-artifact@v4
+        with:
+          name: Activity
+          path: artifact/
+          if-no-files-found: error
+
+  release:
+    name: Publish tagged release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [backend, frontend, build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download installable package
+        uses: actions/download-artifact@v4
+        with:
+          name: Activity
+          path: release
+
+      - name: Recreate installable package
+        working-directory: release
+        run: zip -r Activity.zip Activity
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: gh release create "${GITHUB_REF_NAME}" release/Activity.zip --generate-notes

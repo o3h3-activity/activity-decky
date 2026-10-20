@@ -1,0 +1,9 @@
+/*
+ * Theme variables + utilities only: no preflight, Steam UI owns base element styles.
+ * Unlayered on purpose: Steam's stylesheets are unlayered and would beat any layered rule.
+ * `theme(inline)` bakes theme values into utilities, so no `:root` variable block is emitted.
+ */
+@import "tailwindcss/theme.css" theme(inline);
+@import "tailwindcss/utilities.css" source(none);
+
+@source "../**/*.tsx";

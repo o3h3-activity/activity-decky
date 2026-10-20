@@ -1,0 +1,37 @@
+{
+	"compilerOptions": {
+		"paths": {
+			"@api/*": ["./src/api/*"],
+			"@events": ["./src/events.ts"],
+			"@components/*": ["./src/components/*"],
+			"@stores/*": ["./src/stores/*"],
+			"@pages": ["./src/pages/index.ts"],
+			"@pages/*": ["./src/pages/*"],
+			"@steam": ["./src/steam/index.ts"],
+			"@steam/*": ["./src/steam/*"],
+			"@typings/*": ["./src/types/*"],
+			"@ui/*": ["./src/ui/*"],
+			"@utils/*": ["./src/utils/*"]
+		},
+		"rootDir": "src",
+		"outDir": "dist",
+		"module": "ESNext",
+		"target": "ES2020",
+		"lib": ["ES2024", "ESNext.Disposable", "DOM", "DOM.Iterable"],
+		"types": ["node"],
+		"jsx": "react-jsx",
+		"declaration": false,
+		"moduleResolution": "bundler",
+		"noUnusedLocals": true,
+		"noUnusedParameters": true,
+		"esModuleInterop": true,
+		"noImplicitReturns": true,
+		"noImplicitThis": true,
+		"noImplicitAny": true,
+		"strict": true,
+		"allowSyntheticDefaultImports": true,
+		"resolveJsonModule": true
+	},
+	"include": ["src"],
+	"exclude": ["node_modules", "dist"]
+}

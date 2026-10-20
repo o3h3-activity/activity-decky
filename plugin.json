@@ -1,0 +1,11 @@
+{
+	"name": "Activity",
+	"author": "ynhhoJ",
+	"flags": [],
+	"api_version": 1,
+	"publish": {
+		"tags": [],
+		"description": "View game activity for Non-Steam Games",
+		"image": "https://opengraph.githubassets.com/1/SteamDeckHomebrew/PluginLoader"
+	}
+}

@@ -1,0 +1,1 @@
+"""Disc-image identity capability."""

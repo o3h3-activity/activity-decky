@@ -1,0 +1,58 @@
+[project]
+name = "activity-decky-backend"
+version = "0.0.1"
+requires-python = ">=3.11"
+dependencies = []
+
+[dependency-groups]
+dev = [
+    "basedpyright==1.40.2",
+    "ruff==0.16.10",
+]
+
+[tool.uv]
+package = false
+
+[tool.ruff]
+target-version = "py311"
+line-length = 88
+include = ["main.py", "py_modules/**/*.py", "tests/**/*.py"]
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I", "B", "UP", "ASYNC", "RUF", "S"]
+extend-select = [
+    "A", "ARG", "C4", "DTZ", "FLY", "LOG", "N", "PERF", "PIE",
+    "PLC", "PLE", "PLW", "RET", "PGH003", "PGH004", "C90",
+]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 10
+
+[tool.ruff.lint.isort]
+known-first-party = ["activity_backend"]
+
+[tool.ruff.lint.per-file-ignores]
+# Behavioral fixtures use deliberately fake credentials.
+"tests/test_*.py" = ["S105"]
+
+[tool.basedpyright]
+include = ["main.py", "py_modules"]
+extraPaths = ["py_modules"]
+pythonVersion = "3.11"
+pythonPlatform = "Linux"
+typeCheckingMode = "strict"
+# Decky adds py_modules to sys.path; activity_backend is the backend package.
+# Decky provides the implementation at runtime; decky.pyi describes it locally.
+reportMissingModuleSource = "none"
+reportAny = "error"
+reportExplicitAny = "error"
+reportIgnoreCommentWithoutRule = "error"
+failOnWarnings = true
+enableTypeIgnoreComments = false
+reportUnreachable = "error"
+reportUnnecessaryTypeIgnoreComment = "error"
+reportImportCycles = "error"
+reportUninitializedInstanceVariable = "error"
+reportInvalidCast = "error"
+reportUnannotatedClassAttribute = "error"
+reportUnusedCallResult = "error"

@@ -1,0 +1,81 @@
+{
+	"name": "activity",
+	"version": "0.0.1",
+	"description": "",
+	"type": "module",
+	"scripts": {
+		"build": "vite build",
+		"watch": "vite build --watch",
+		"lint": "e=0; pnpm run lint:frontend || e=1; pnpm run lint:python || e=1; exit $e",
+		"lint:frontend": "e=0; biome lint . || e=1; oxlint || e=1; eslint --config ./eslint.config.js '**/*.tsx' '**/*.ts' || e=1; exit $e",
+		"lint:fix": "e=0; biome check --write . || e=1; oxlint --fix || e=1; eslint --config ./eslint.config.js '**/*.tsx' '**/*.ts' --fix || e=1; pnpm run lint:python:fix || e=1; exit $e",
+		"lint:python": "uv run --locked ruff check .",
+		"lint:python:fix": "uv run --locked ruff check --fix . && uv run --locked ruff format .",
+		"format:python:check": "uv run --locked ruff format --check .",
+		"typecheck:python": "uv run --locked basedpyright",
+		"test:python": "uv run --locked python -m unittest discover -s tests",
+		"check:python": "pnpm run lint:python && pnpm run format:python:check && pnpm run typecheck:python && pnpm run test:python",
+		"test": "pnpm run test:frontend && pnpm run test:python",
+		"test:frontend": "vitest run"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/SteamDeckHomebrew/decky-plugin-template.git"
+	},
+	"keywords": [
+		"decky",
+		"plugin",
+		"plugin-template",
+		"steam-deck",
+		"deck"
+	],
+	"author": "You <you@you.tld>",
+	"license": "BSD-3-Clause",
+	"bugs": {
+		"url": "https://github.com/SteamDeckHomebrew/decky-plugin-template/issues"
+	},
+	"homepage": "https://github.com/SteamDeckHomebrew/decky-plugin-template#readme",
+	"devDependencies": {
+		"@biomejs/biome": "2.5.15",
+		"@decky/ui": "^4.15.1",
+		"@eslint/js": "^10.0.1",
+		"@stylistic/eslint-plugin": "^5.10.0",
+		"@tailwindcss/node": "^4.3.3",
+		"@tailwindcss/oxide": "^4.3.3",
+		"@types/node": "^22.20.5",
+		"@types/react": "19.1.1",
+		"@types/react-dom": "19.1.1",
+		"@types/react-router": "5.1.20",
+		"@types/webpack": "^5.28.5",
+		"@typescript/native": "npm:typescript@^7.0.2",
+		"eslint": "^10.13.0",
+		"eslint-plugin-array-func": "^5.1.1",
+		"eslint-plugin-oxlint": "^1.89.0",
+		"eslint-plugin-perfectionist": "^5.12.1",
+		"eslint-plugin-promise": "^7.3.0",
+		"eslint-plugin-react": "^7.37.5",
+		"eslint-plugin-react-hooks": "^7.1.1",
+		"eslint-plugin-sonarjs": "^4.2.2",
+		"eslint-plugin-unicorn": "^78.0.0",
+		"globals": "^17.13.0",
+		"oxlint": "^1.89.0",
+		"oxlint-tsgolint": "^7.0.2004",
+		"react": "18.3.1",
+		"tailwindcss": "^4.3.3",
+		"typescript": "npm:@typescript/typescript6@^6.0.2",
+		"typescript-eslint": "^8.72.0",
+		"vite": "^8.3.4",
+		"vite-plugin-external": "^8.0.3",
+		"vite-plugin-node-polyfills": "^0.28.0",
+		"vitest": "^5.0.5"
+	},
+	"dependencies": {
+		"@decky/api": "^1.1.3",
+		"@legendapp/state": "^2.1.15",
+		"es-toolkit": "^1.52.0",
+		"nanoevents": "^10.0.0",
+		"qr": "^0.7.2",
+		"react-icons": "^5.7.0",
+		"tslib": "^2.8.1"
+	}
+}

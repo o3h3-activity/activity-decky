@@ -1,0 +1,3 @@
+[submodule "game-anatomy"]
+	path = game-anatomy
+	url = git@github.com:o3h3-activity/game-anatomy.git

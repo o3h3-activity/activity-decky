@@ -1,0 +1,1 @@
+"""Activity device authorization capability."""
