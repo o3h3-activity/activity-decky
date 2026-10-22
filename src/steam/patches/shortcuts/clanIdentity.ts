@@ -8,9 +8,9 @@
 const CLAN_STEAM_ID_BASE = 103_582_791_429_521_408n;
 
 /**
- * Shift minted accounts out of the low official-clan range (Valve groups are
- * typically a few million). Combined with the modulus, the result stays a
- * positive 32-bit `GetAccountID()` value.
+ * Plugin-chosen offset for deterministic synthetic accounts, not a
+ * Steam-reserved namespace. Together with the modulus it keeps the result
+ * within a positive 32-bit `GetAccountID()` value.
  */
 const CLAN_ACCOUNT_ID_OFFSET = 1_000_000;
 
@@ -31,10 +31,15 @@ export function clanAccountIdFromAppId(appId: number): number {
 }
 
 /**
- * Clan account ids minted for shortcut Activity tabs during one session.
- * Axios/fetch vanity and partner-event URLs often omit `appid`; the intercept
- * redirects only known shortcut clans so official `steamcommunity.com/gid/…`
- * is not stolen.
+ * Tracks the synthetic clan IDs used by shortcuts during this login.
+ *
+ * Later event and image requests may contain only a clan ID, with no appid
+ * to check. User News registers the mapped ID here first so those requests
+ * can be recognized. Unregistered clans are left to Steam.
+ *
+ * The appid-to-clan mapping is our convention, not a reserved Steam ID range,
+ * and it can collide. Registration is required; a clan-shaped URL alone is
+ * not enough to identify a shortcut.
  */
 export class ShortcutClanRegistry {
 	private readonly clanAccountIds = new Set<number>();

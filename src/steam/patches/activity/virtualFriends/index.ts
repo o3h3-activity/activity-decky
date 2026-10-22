@@ -17,6 +17,17 @@ function isFriendState(value: unknown): value is FriendState {
 	return isObjectLike(value);
 }
 
+/**
+ * Gives Steam names and avatars for Activity users who are not Steam friends.
+ *
+ * Activity cards resolve their authors through `GetFriendState`, which can
+ * receive either an account ID or a SteamID object. Registered users are
+ * indexed by both account ID and full SteamID to support these lookups.
+ *
+ * The original lookup always runs first. If it returns an actual Steam
+ * friend (`is_friend`), that state wins. Otherwise a registered Activity
+ * user's details are returned without adding them to the Steam friends list.
+ */
 export class VirtualFriendPatcher {
 	private readonly scope = new LifetimeScope("ActivityFriends");
 	private readonly friendsByAccountId = new Map<number, ActivityFriend>();

@@ -6,8 +6,18 @@ import logger from "@utils/logger";
 import type { UserNewsRequest } from "../events/types";
 import { UserNewsFeedParser } from "./userNewsFeedParser";
 
+/**
+ * Loads the data needed to build a shortcut's UserNews response.
+ *
+ * The feed alone is not enough: its author IDs need to be matched to SteamIDs
+ * using the friend list and current account. These are fetched together, then
+ * passed to `UserNewsFeedParser`. A missing or invalid feed returns
+ * `undefined` so the RPC patch can fall back to Steam.
+ *
+ * The abort check after loading prevents a completed request from supplying
+ * data to a session that has already ended.
+ */
 export abstract class UserNewsFeed {
-	/** Fetches and validates the Activity feed; logs failures, stays silent once `signal` aborted. */
 	public static async load(
 		release: GameRelease,
 		request: UserNewsRequest,

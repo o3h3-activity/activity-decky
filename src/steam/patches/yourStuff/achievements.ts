@@ -74,6 +74,29 @@ function isAlreadyInjected(
 	);
 }
 
+/**
+ * Supplies provider achievements to each of Steam's achievement views.
+ *
+ * Patching one API is not enough; Steam reads achievements in three ways:
+ * - `appDetailsStore.GetAchievements` returns a summary synchronously. A
+ *   missing `vecHighlight` makes Steam load native cached data, so we return
+ *   an empty summary while loading and later write the provider's summary.
+ * - The SteamClient APIs return promises containing `result` and `data`.
+ *   We supply the current user's list and an empty friend list.
+ * - The newer UI calls `GetGameAchievements`,
+ *   `GetGlobalAchievementPercentages`, and `GetUserAchievements`. It expects
+ *   `GetEResult()` and `Body()` methods, not plain JSON.
+ *
+ * Schema, percentages, and unlocks must use the same `internal_key`: that is
+ * how Steam joins the three responses. We use one-based provider-array
+ * indexes and put every achievement in group 0. Steam creates this base group
+ * even when the schema response has no groups.
+ *
+ * Only supported shortcuts are intercepted. The user-achievement RPC also
+ * checks the requested SteamID, so it cannot return our user's unlocks for
+ * someone else. Provider invalidation clears injected summaries and resets
+ * the affected queries to avoid keeping unlocks from a previous account.
+ */
 export class SteamYourStuffAchievementsPatcher {
 	private readonly scope = new LifetimeScope("Achievements");
 
@@ -401,6 +424,18 @@ export class SteamYourStuffAchievementsPatcher {
 		};
 	}
 
+	/**
+	 * Restores badge URLs after Steam converts the schema response.
+	 *
+	 * Steam prefixes `icon` and `icon_gray` with its app-image CDN path even
+	 * when they already contain absolute URLs. Sending the right URLs in the
+	 * RPC is not enough: we must fix `icon_achieved` and `icon_unachieved` in
+	 * the cached schema, using `api_name` to find the provider achievement.
+	 *
+	 * Only `["achievements", appId, "schema"]` entries for intercepted apps are
+	 * changed. Comparing URLs before `setQueryData` stops the resulting cache
+	 * notification from triggering another write.
+	 */
 	private subscribeNativeSchemas(client: SteamQueryClient): void {
 		this.scope.addDisposer(
 			client.getQueryCache().subscribe((event) => {
@@ -582,6 +617,13 @@ export class SteamYourStuffAchievementsPatcher {
 		this.scheduleInject(store, appId, data.details);
 	}
 
+	/**
+	 * Writes the summary on the next tick, outside `GetAchievements`.
+	 *
+	 * Reads for the same app share one pending timer. The callback looks up
+	 * the current app data again because Steam may have replaced `details`
+	 * while it waited. Logout or a provider account change cancels the write.
+	 */
 	private scheduleInject(
 		store: AppDetailsStoreLike,
 		appId: number,
@@ -611,6 +653,11 @@ export class SteamYourStuffAchievementsPatcher {
 		}, 0);
 	}
 
+	/**
+	 * Removes a summary only if it is still the object we injected.
+	 * Steam can replace `details` through `AppDetailsChanged`; cleanup must
+	 * not delete achievement data written since then.
+	 */
 	private clearInjectedAchievements(): void {
 		this.injectScheduled.clear();
 		const store = this.appDetailsStore;

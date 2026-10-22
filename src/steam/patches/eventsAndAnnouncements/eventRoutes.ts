@@ -125,6 +125,15 @@ function partnerEventPermissionsResponse(): SteamPartnerEventPermissionsResponse
 	};
 }
 
+/**
+ * Answers Steam's game-group lookup for a supported shortcut or registered clan.
+ *
+ * `ogg/{appid}` contains an appid, while `gid/{steamid}` contains a clan
+ * SteamID64. We keep that distinction so the request patcher can check app
+ * support or clan registration before returning the synthetic group details.
+ * The `games/{vanity}` and `groups/{vanity}` forms contain neither ID, so
+ * they are left to Steam.
+ */
 export class SteamVanityClanIdRoute {
 	static matchUrl(url: string): RedirectMatch {
 		const ogg = VANITY_OGG.exec(url);
@@ -155,6 +164,19 @@ export class SteamVanityClanIdRoute {
 	}
 }
 
+/**
+ * Loads a single announcement for a shortcut app or its registered clan.
+ *
+ * Steam sends `appid` or `clan_accountid` in either the URL or Axios params
+ * and expects `{ success, event }` back. Several other endpoints start with
+ * `ajaxgetpartnerevent`, so the matcher excludes paging, permissions, and
+ * editing requests.
+ *
+ * A missing announcement returns `{ success: 1, event: null }`. Returning
+ * `undefined` would make the request patcher retry against Steam instead.
+ * Steam has no explicit null-event case: its loader catches the failure to
+ * process the event and returns no model.
+ */
 export class SteamPartnerEventRoute {
 	static matchUrl(url: string, config?: SteamAjaxRequestConfig): RedirectMatch {
 		if (!url.includes("events/ajaxgetpartnerevent")) {
@@ -176,13 +198,22 @@ export class SteamPartnerEventRoute {
 			clanAccountId: match.clanAccountId,
 		});
 
-		// Steam accepts `event: null` as a completed missing-event response and
-		// does not retry the minted clan URL against the public network.
+		// Complete interception rather than asking the request patcher to retry
+		// natively; Steam's event-loader catch handles the missing event.
 		// oxlint-disable-next-line unicorn/no-null
 		return { event: event ?? null, success: 1 };
 	}
 }
 
+/**
+ * Answers Steam's request for announcements around a given event.
+ *
+ * The caller checks `data.success` and reads `data.events`, so this route
+ * returns a successful list response even when the source has no events.
+ * An unavailable source becomes an empty array rather than a fallback
+ * request for a synthetic clan. App support and clan registration are
+ * checked by the shared request patcher.
+ */
 export class SteamAdjacentPartnerEventsRoute {
 	static matchUrl(url: string, config?: SteamAjaxRequestConfig): RedirectMatch {
 		if (!url.includes("events/ajaxgetadjacentpartnerevents")) {
@@ -202,6 +233,14 @@ export class SteamAdjacentPartnerEventsRoute {
 	}
 }
 
+/**
+ * Supplies empty permissions for a shortcut's synthetic clan.
+ *
+ * Steam uses a `/gid/{steamid}/` URL in community pages and a clan-account
+ * query parameter in store/partner pages. Both forms must reach the same
+ * registration check. A matching request succeeds, but edit, follow,
+ * ownership, support, and admin fields stay false or empty.
+ */
 export class SteamPartnerEventPermissionsRoute {
 	static matchUrl(url: string): RedirectMatch {
 		if (!url.includes("ajaxgetpartnereventpermissions")) {

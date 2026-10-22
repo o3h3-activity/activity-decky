@@ -10,42 +10,27 @@ import type { AppOverviewPrototype } from "@typings/appStore";
 import logger from "@utils/logger";
 import { isNil } from "es-toolkit";
 
-/** Shortcut game ids pack the app id in the low 12 bits (0xFFF). */
+/** Steam's shortcut `GetPrimaryAppID` mask, not the local shortcut appid. */
 const SHORTCUT_APP_ID_MASK = 4095;
 
 /**
- * Unlocks the native app-details tabs for targeted shortcuts.
+ * Opens the normal app-details sections for supported shortcuts.
  *
- * Investigation summary (steam/chunk.js):
+ * Steam's `GetSections` limits mods and shortcuts to "nonsteam", "notes",
+ * and "screenshots". Returning false from `BIsModOrShortcut()` lets a
+ * supported shortcut use the normal section list. Other patches supply
+ * the data those sections need.
  *
- * - The Deck UI app page (module 87498) renders four tabs — Activity
- *   ("WhatsNew"), Your stuff ("YourStuff"), Community and Game info. Their
- *   content is driven by a section set produced by `GetSections` (module
- *   59856, exported as `N_`):
+ * Changing that check also affects launch IDs. `GetGameID()` would return
+ * the appid instead of the shortcut's 64-bit `m_gameid`, which Steam passes
+ * to `RunGame`. `GetPrimaryAppID()` would likewise stop extracting
+ * `m_ulGameId.low & 4095`. Both methods are patched to keep their shortcut
+ * behavior, using the unchanged `app_type` to identify shortcuts.
  *
- *       e.app_type == Demo || e.app_type == MobileApp ? s = mobileList
- *       : e.BIsModOrShortcut() && (s = ["nonsteam", "notes", "screenshots"]);
- *
- *   So every shortcut is hard-limited to three sections; the Activity,
- *   Community, cards and game-info sections never appear.
- *
- * - `BIsModOrShortcut()` lives on the AppOverview prototype (module 71047,
- *   instance reachable through the `window.appStore` global):
- *
- *       BIsModOrShortcut() { return this.third_party_mod || this.app_type == Shortcut; }
- *       BIsShortcut()      { return this.app_type == Shortcut; }
- *       GetGameID()        { return this.BIsModOrShortcut() ? this.m_gameid : this.appid.toString(); }
- *       GetPrimaryAppID()  { return this.BIsModOrShortcut() ? 4095 & this.m_ulGameId.low : this.appid; }
- *
- *   This is why editing `app_type` to 1 breaks the Play button: the launcher
- *   resolves the game through `GetGameID()`/`GetPrimaryAppID()` and gets the
- *   generated shortcut appid instead of the real 64-bit shortcut gameid.
- *
- * The patch makes `BIsModOrShortcut()` report `false` for targeted shortcuts
- * (unlocking every `BIsModOrShortcut()`-gated UI path: sections, game-info
- * description/association reads, store/community widgets) while pinning
- * `GetGameID()`/`GetPrimaryAppID()` to the shortcut branch based on
- * `app_type` — which we never touch — so launching keeps working.
+ * These hooks live on the overview prototype and check `Games` support on
+ * each call. Other apps keep their original behavior. `BIsShortcut()` is
+ * left alone, but every caller of `BIsModOrShortcut()` sees the new result,
+ * including the checks before loading game descriptions and associations.
  */
 export class OverviewPatch {
 	readonly name = "Overview";

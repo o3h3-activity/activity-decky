@@ -8,7 +8,15 @@ export type RegisteredUserStatus = Readonly<{
 	steamId: string;
 }>;
 
-/** Stores Activity comments for Steam's secondary lookup and deletion flows. */
+/**
+ * Connects Steam's status IDs to Activity comment IDs.
+ *
+ * Reading a status uses `(steamid, postid)`, but deleting one uses only
+ * `postid`. Since post IDs come from event timestamps, different authors
+ * can share one. The main index includes both values; the deletion index
+ * contains only the current user's comments, so another author's status
+ * cannot be selected for deletion.
+ */
 export class UserStatusRegistry {
 	private readonly statuses = new Map<string, RegisteredUserStatus>();
 	private readonly ownedStatusesByPostId = new Map<

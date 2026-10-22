@@ -12,18 +12,23 @@ export type UserNewsEventOfKind<TKind extends UserNewsEvent["kind"]> = Extract<
 	{ kind: TKind }
 >;
 
-/** Converts one feed event kind into Steam `CUserNews_Event` protos. */
+/**
+ * Converts one Activity event kind into Steam UserNews events.
+ *
+ * Steam chooses the event renderer from `eventtype()`. Each handler selects
+ * that type and supplies any extra fields, while the shared result builder
+ * adds the author, timestamp, and game ID.
+ *
+ * An empty array is a successful result with nothing to add. `undefined`
+ * means conversion could not finish, so the caller must use Steam's response
+ * instead of replacing the feed with only the events that converted.
+ */
 export abstract class UserNewsFeedEventHandler<
 	TKind extends UserNewsEvent["kind"] = UserNewsEvent["kind"],
 > {
 	protected abstract readonly kind: TKind;
 	protected abstract readonly eventType: SteamUserNewsEventType;
 
-	/**
-	 * Selects this handler's events from the whole feed, preserving feed order.
-	 * `undefined` means required conversion data is unavailable, so callers must
-	 * preserve Steam's cached response rather than commit a partial replacement.
-	 */
 	public createFromFeed(
 		events: readonly UserNewsEvent[],
 		context: UserNewsEventContext,
@@ -47,7 +52,6 @@ export abstract class UserNewsFeedEventHandler<
 		| undefined
 		| UserNewsEventResult[];
 
-	/** One proto for `event` at its `rtime`, typed by this handler's `eventType`. */
 	protected toResult(
 		event: UserNewsEventOfKind<TKind>,
 		context: UserNewsEventContext,

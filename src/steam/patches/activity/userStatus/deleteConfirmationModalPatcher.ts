@@ -99,7 +99,18 @@ function readDeleteConfirmationModal(
 }
 
 /**
- * Tracks Steam delete-confirmation modals so successful custom deletions can close them.
+ * Closes Steam's confirmation dialog after Activity deletes a status.
+ *
+ * Both `ShowModalInternal` and `ShowLegacyPopupModal` return `Close` and
+ * `ClosedPromise`. We capture those handles when
+ * `props.event.GetUserStatus().time` matches a current-user status in the
+ * registry. That time is the post ID Steam uses for deletion; no dialog
+ * title or React component name is needed to identify it.
+ *
+ * `UserStatusPatcher` calls `close` only after deletion succeeds. When a
+ * dialog closes normally, its promise removes the saved handle only if it
+ * has not been replaced by a newer dialog for the same post. Unmounting
+ * drops the handles without closing dialogs the user still has open.
  */
 export class UserStatusDeleteConfirmationModalPatcher {
 	private readonly deleteModalClosers = new Map<string, () => void>();
@@ -111,10 +122,6 @@ export class UserStatusDeleteConfirmationModalPatcher {
 		});
 	}
 
-	/**
-	 * Hooks both modal-manager entry points; unavailable Steam internals leave no modal patches.
-	 * Preserves Steam's modal handles so unrelated dialogs retain their native close/cancel behavior.
-	 */
 	install(): void {
 		const discoveredConstructor: unknown = findModuleExport(
 			isModalManagerConstructor,
@@ -160,9 +167,6 @@ export class UserStatusDeleteConfirmationModalPatcher {
 		);
 	}
 
-	/**
-	 * Closes a captured modal after its backend deletion succeeds.
-	 */
 	close(postId: string): void {
 		const closeModal = this.deleteModalClosers.get(postId);
 

@@ -5,8 +5,18 @@ import {
 } from "@utils/safeInteger";
 import type { UserNewsRequest } from "../events/types";
 
+/**
+ * Reads the app filter and time window from Steam's `GetUserNews` request.
+ *
+ * A zero `filterappid` means the global feed, which we leave to Steam.
+ * Malformed fields and reversed time windows also return `undefined` rather
+ * than being treated as shortcut requests.
+ *
+ * Steam sends an end time of zero for new events and a start time of zero
+ * for history. We treat zero as an open bound and include events on either
+ * nonzero boundary when selecting the replacement response.
+ */
 export abstract class UserNewsRequests {
-	/** Undefined for malformed bodies or inverted windows so Steam serves the request natively. */
 	public static read(args: unknown[]): undefined | UserNewsRequest {
 		const body = readRequestBody(args);
 		const appId = body?.filterappid?.();
@@ -27,7 +37,6 @@ export abstract class UserNewsRequests {
 		return { appId, count, endTime, startTime };
 	}
 
-	/** Zero bounds are open-ended; bounds are inclusive. */
 	public static isWithinWindow(
 		request: UserNewsRequest,
 		eventTime: number,

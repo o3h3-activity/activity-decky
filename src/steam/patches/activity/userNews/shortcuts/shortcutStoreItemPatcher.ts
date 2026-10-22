@@ -38,8 +38,22 @@ function storeItemFallback(property: string): unknown {
 }
 
 /**
- * Serves shortcut metadata to Steam's activity preparation cache and the
- * StoreItem queries used by its renderer; restores only data it owns on unmount.
+ * Provides the store metadata Steam expects when rendering shortcut activity.
+ *
+ * After merging UserNews, Steam requests StoreItems for the events' appids.
+ * A shortcut has no store entry, so we answer from its library overview
+ * instead. The StoreItem reports that its data is ready through
+ * `BContainDataRequest` and takes its name and visibility from the overview.
+ * Unimplemented `B*` methods return false; `Get*` methods return undefined.
+ *
+ * The StoreItem cache is only half of this. Steam also reads
+ * `["StoreItem", "app_<appid>", "default_info"]` from its query cache.
+ * Pending store requests are cancelled, and later StoreBrowse results for
+ * the shortcut are replaced with the local name and visibility.
+ *
+ * On unmount, we restore previous query data or remove entries we added,
+ * but only if the cached object is still ours. A value replaced by another
+ * writer must not be removed during cleanup.
  */
 export class ShortcutStoreItemPatcher {
 	private cache: SteamStoreItemCache | undefined;
@@ -54,10 +68,6 @@ export class ShortcutStoreItemPatcher {
 		});
 	}
 
-	/**
-	 * Adopts Steam's StoreItem cache and answers supported shortcut
-	 * QueueStoreItemRequest calls locally.
-	 */
 	install(cache: SteamStoreItemCache, queryClient: SteamQueryClient): void {
 		this.cache = cache;
 		this.queryClient = queryClient;

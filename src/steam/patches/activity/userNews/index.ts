@@ -59,6 +59,23 @@ type SteamUserNewsPatcherDependencies = Readonly<{
 	virtualFriendPatcher: VirtualFriendPatcher;
 }>;
 
+/**
+ * Fills a supported shortcut's Activity feed with Activity API events.
+ *
+ * Steam fetches `GetUserNews` and `UserGameActivity.GetActivity` together
+ * and refuses to merge either result if one fails. We convert the feed to
+ * `CUserNews_Event` objects and return an empty successful game-activity
+ * response. Replacing only `GetUserNews` would leave the feed empty when
+ * the companion request failed.
+ *
+ * Before Steam merges the events, we prepare the shortcut's StoreItem,
+ * register its authors, and set up status-text lookups. Missing dependencies
+ * or conversion data leave the UserNews request to Steam. Global feeds and
+ * unsupported apps are not intercepted.
+ *
+ * The spotlight hook returns no featured events for shortcuts and registers
+ * their synthetic clan IDs for later event and image requests.
+ */
 export class SteamUserNewsPatcher {
 	private readonly scope = new LifetimeScope("UserNews");
 	private readonly storeItems: ShortcutStoreItemPatcher;
@@ -194,8 +211,8 @@ export class SteamUserNewsPatcher {
 	}
 
 	/**
-	 * Shortcuts have no Steam trading-card game activity. Steam now requires this
-	 * companion response to succeed before it will merge our UserNews response.
+	 * Returns no trading-card activity for shortcuts. The response still
+	 * needs to succeed or Steam will discard the UserNews result too.
 	 */
 	private patchGetGameActivity(service: SteamUserGameActivityService): void {
 		this.scope.add(
@@ -211,10 +228,6 @@ export class SteamUserNewsPatcher {
 		);
 	}
 
-	/**
-	 * Serves Activity's feed for a backend-supported shortcut with a catalog release;
-	 * Steam answers all other shortcuts unchanged and remains the fallback on failures.
-	 */
 	private async respondToShortcut(
 		request: UserNewsRequest,
 		proto: SteamUserNewsProtoEventConstructor,
@@ -258,6 +271,20 @@ export class SteamUserNewsPatcher {
 		);
 	}
 
+	/**
+	 * Rebuilds the feed once per app before resuming incremental reads.
+	 *
+	 * Steam asks for new events after `GetNewestActivityTime() + 1` and older
+	 * events before `GetOldestActivityTime() - 1`. Its cache can survive a
+	 * plugin reload while our status registry does not. Reusing those cursors
+	 * would skip the events needed to restore status-text lookups.
+	 *
+	 * The first forward request (`endTime === 0`) therefore starts at zero.
+	 * Once conversion succeeds, we clear the cached days and reset Steam's
+	 * cursors: oldest to `4294967295`, newest to `0`, and "no more history"
+	 * to false. Steam's merge then fills them from the new events. A failed
+	 * conversion leaves the days, cursors, and initialization flag alone.
+	 */
 	private async createResponse(
 		request: UserNewsRequest,
 		release: GameRelease,

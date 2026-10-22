@@ -6,6 +6,14 @@ import type { UserNewsEventContext, UserNewsEventResult } from "./types";
 import { feedEventActorSteamId } from "./userNewsEventResult";
 import { UserNewsFeedEventHandler } from "./userNewsFeedEventHandler";
 
+/**
+ * Creates a Steam status event for an Activity comment.
+ *
+ * Steam does not read the comment text from the event. `AddUserStatus` makes
+ * a second request using the author's SteamID and event timestamp as the
+ * post ID. We register the comment with `UserStatusPatcher` before returning
+ * the event, so that lookup can supply its text and later resolve deletions.
+ */
 export class UserStatusUserNewsEventHandler extends UserNewsFeedEventHandler<"user_status"> {
 	protected readonly kind = "user_status";
 	protected readonly eventType = SteamUserNewsEventType.UserStatus;
@@ -14,9 +22,6 @@ export class UserStatusUserNewsEventHandler extends UserNewsFeedEventHandler<"us
 		super();
 	}
 
-	/**
-	 * Converts API statuses to Steam news events and registers their secondary lookup data.
-	 */
 	protected create(
 		events: readonly UserStatusUserNewsEvent[],
 		context: UserNewsEventContext,

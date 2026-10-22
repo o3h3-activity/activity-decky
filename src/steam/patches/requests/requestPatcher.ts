@@ -31,6 +31,22 @@ export type MatchedRedirectRoute = {
 	url: string;
 };
 
+/**
+ * Decides whether a GET request can be answered by Activity.
+ *
+ * Matching the URL is only the first step. An appid must belong to a
+ * supported shortcut; a clan-only request must name a clan registered by
+ * User News. Otherwise the original Steam request runs.
+ *
+ * Routes return the response body. Each client wrapper turns it into what
+ * its caller expects: a plain body, an Axios response, or a fetch `Response`.
+ * If matching, resolution, or formatting fails, or the route returns
+ * `undefined`, we fall back to Steam.
+ *
+ * Cancellation is different: a cancelled request must not start a fallback
+ * request. We watch Axios cancel tokens and the session's abort signal.
+ * Decky RPCs cannot be stopped once sent, so late results are discarded.
+ */
 export abstract class SteamRequestPatcher {
 	protected readonly scope: LifetimeScope;
 	private readonly routes: readonly RedirectRoute[];

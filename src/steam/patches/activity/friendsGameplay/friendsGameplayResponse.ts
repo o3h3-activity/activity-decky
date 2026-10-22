@@ -18,13 +18,19 @@ type ParsedEntry = Readonly<{
 	friend: ActivityFriend;
 }>;
 
+/**
+ * Converts Activity playtime rows into Steam's friends-gameplay response.
+ *
+ * Steam separates friends into `played_recently` and `played_ever`. Each
+ * entry needs a SteamID, recent `minutes_played`, and lifetime
+ * `minutes_played_forever`. A friend with recent minutes goes in the first
+ * list; other played friends go in the second. Malformed rows and friends
+ * with no playtime are skipped. Categories we have no data for stay empty.
+ *
+ * The result also includes the matching Activity users so their names and
+ * avatars can be registered before Steam renders the playtime lists.
+ */
 export abstract class FriendsGameplayResponse {
-	/**
-	 * Maps the flat `FriendPlaytimeResponse[]` onto Steam's `GetFriendsGameplayInfo`
-	 * body. Played friends with recent minutes fill `played_recently`; all other
-	 * played friends fill `played_ever`. Malformed rows and never-played friends are
-	 * dropped; a malformed body yields `undefined`.
-	 */
 	public static parse(value: unknown): FriendsGameplay | undefined {
 		if (!Array.isArray(value)) {
 			return undefined;

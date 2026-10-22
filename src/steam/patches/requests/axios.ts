@@ -45,6 +45,14 @@ function isAxiosLike(value: unknown): value is AxiosLike {
 	);
 }
 
+/**
+ * Redirects GET requests made through Steam's Axios instance.
+ *
+ * The module lookup checks Axios-specific methods and fields so it does not
+ * pick an unrelated object with a `get` method. Route results are wrapped in
+ * an Axios response because Steam's event loaders read `response.data`,
+ * including `data.success` and `data.events`, rather than the body directly.
+ */
 export class SteamAxiosPatcher extends SteamRequestPatcher {
 	constructor(
 		routes: readonly RedirectRoute[],

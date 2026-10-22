@@ -119,7 +119,22 @@ function readPostedComment(value: unknown): ParsedComment | undefined {
 		: undefined;
 }
 
-/** Routes custom shortcut comments through Activity while preserving native Steam status calls. */
+/**
+ * Uses Activity comments for the status posts on supported shortcut pages.
+ *
+ * A UserNews status event contains the author and timestamp, not its text.
+ * Steam then calls `GetPostedStatus` with the author's SteamID and the event
+ * time as `postid`. The registry connects that pair to an Activity comment,
+ * and this patch answers with the protobuf-style methods Steam reads:
+ * `accountid()`, `postid()`, `status_text()`, `deleted()`, and `appid()`.
+ *
+ * Posting follows a different path: the composer sends `appid` and
+ * `status_text` to `PostStatusToFriends`. Deletion sends only a `postid` to
+ * `DeletePostedStatus`, so it must resolve a registered current-user comment
+ * before calling Activity. After deletion succeeds, the modal helper closes
+ * the confirmation dialog. Requests that do not belong to our shortcuts or
+ * registered comments keep Steam's original behavior.
+ */
 export class UserStatusPatcher {
 	private readonly scope = new LifetimeScope("UserStatus");
 	private readonly registry = new UserStatusRegistry();

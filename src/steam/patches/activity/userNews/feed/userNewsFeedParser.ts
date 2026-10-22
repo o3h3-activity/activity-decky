@@ -10,6 +10,19 @@ import { isObjectLike } from "@utils/isObjectLike";
 
 const MILLISECONDS_PER_SECOND = 1000;
 
+/**
+ * Turns Activity comments and achievement unlocks into events the Steam
+ * handlers can encode.
+ *
+ * Authors are matched to SteamIDs through the friend list, or the current
+ * account for our own posts. Comments must use `steam-bbcode`; malformed
+ * entries and authors that cannot be resolved are skipped.
+ *
+ * Steam uses a status event's timestamp as its post ID. Comments by the same
+ * author therefore need distinct timestamps: collisions are moved forward
+ * one second at a time. Achievement unlocks work differently; unlocks by
+ * the same author in the same second are grouped into one event.
+ */
 export abstract class UserNewsFeedParser {
 	public static parse(
 		value: unknown,

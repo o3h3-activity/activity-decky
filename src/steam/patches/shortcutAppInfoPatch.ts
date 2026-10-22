@@ -11,24 +11,18 @@ import logger from "@utils/logger";
 import { isSupportedShortcut } from "./shortcutEligibility";
 
 /**
- * Prevents native Steam app-info requests for supported local shortcuts.
+ * Keeps supported shortcut IDs out of Steam's app-info request queue.
  *
- * Shortcut app ids identify local library entries rather than Steam catalog
- * apps. Native UI paths can still request app info for these entries; this
- * patch prevents those requests from entering Steam's metadata queue.
+ * For an unknown appid, `GetAppInfo` creates a cache entry and calls
+ * `QueueAppInfoRequest`. Steam batches these IDs after 25 ms and sends them
+ * to `CommunityService.GetApps`. Local shortcut IDs have no Steam catalog
+ * entry, so we skip the queue step and return a resolved promise instead.
+ * The cache entry may still be created; this does not fill it or mark it valid.
  *
- * Only `AppInfoStore.QueueAppInfoRequest` is intercepted. For a shortcut
- * currently supported by Games, it returns a resolved promise without
- * enqueueing work. Unsupported shortcuts and non-shortcut apps use the original
- * implementation. Support is checked per request rather than at installation,
- * allowing eligibility to follow Games' current state. This patch does not
- * supply replacement app info or change cached metadata.
- *
- * SessionPatches owns the patch independently of other UI patches. Installation
- * waits for appDetailsStore readiness, then discovers AppInfoStore by its method
- * shape. If readiness times out or discovery fails, requests remain unpatched.
- * The session-owned LifetimeScope cancels pending installation on logout and
- * removes the interception if it was installed.
+ * Support is checked on each request. Other apps and unsupported shortcuts
+ * still use Steam's queue. Installation waits for `appDetailsStore`, then
+ * locates AppInfoStore by its methods. If either is unavailable, requests
+ * remain unchanged. This patch does not depend on `OverviewPatch`.
  */
 export class ShortcutAppInfoPatch {
 	private readonly scope = new LifetimeScope("ShortcutAppInfo");

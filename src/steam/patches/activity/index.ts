@@ -7,6 +7,15 @@ import { SteamUserNewsPatcher } from "./userNews";
 import { UserStatusPatcher } from "./userStatus";
 import { VirtualFriendPatcher } from "./virtualFriends";
 
+/**
+ * Shares friend and status state between the Activity-tab patches.
+ *
+ * Steam looks up each event or gameplay row's author through `GetFriendState`.
+ * Both feeds therefore need the same `VirtualFriendPatcher`. User News also
+ * needs the same `UserStatusPatcher` that answers the later status-text lookup.
+ * Keeping them in one scope removes the feeds and their supporting state
+ * together on logout.
+ */
 export class SteamActivityTabPatcher {
 	private readonly scope = new LifetimeScope("Activity");
 

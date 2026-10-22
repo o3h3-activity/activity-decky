@@ -54,6 +54,20 @@ function invalidateShortcutGameplay(client: SteamQueryClient): void {
 	});
 }
 
+/**
+ * Answers `Player.GetFriendsGameplayInfo` for supported shortcuts using
+ * Activity playtime data.
+ *
+ * Steam reads the response through `Body().toObject()`, then looks up each
+ * player's name and avatar. Friends must be registered with
+ * `VirtualFriendPatcher` before the response is returned.
+ *
+ * Steam caches these reads under `GameplayInfo_<account>_<appid>`. Shortcut
+ * entries are invalidated on installation and removal so an old result does
+ * not hide the change. Other apps and malformed requests still go to Steam.
+ * Once a shortcut request is accepted, an Activity fetch failure returns an
+ * empty successful result; Steam has no playtime data for that local appid.
+ */
 export class SteamFriendsGameplayPatcher {
 	private readonly scope = new LifetimeScope("FriendsGameplay");
 	private readonly games: Games;

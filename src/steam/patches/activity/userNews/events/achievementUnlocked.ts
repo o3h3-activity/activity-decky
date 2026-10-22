@@ -7,6 +7,18 @@ import { SteamUserNewsEventType } from "./steamUserNewsEventType";
 import type { UserNewsEventContext, UserNewsEventResult } from "./types";
 import { UserNewsFeedEventHandler } from "./userNewsFeedEventHandler";
 
+/**
+ * Builds achievement-unlock events and fills Steam's achievement map first.
+ *
+ * The event carries achievement IDs in `achievement_names`, not display
+ * names, descriptions, or icons. Steam's `AddAchievements` resolves those IDs
+ * through the per-app map, which must be filled before the feed is merged.
+ * We mark it achieved and use the unlocked icon for the event.
+ *
+ * Unknown achievement IDs are skipped. If provider metadata is unavailable,
+ * conversion returns `undefined` so the feed patch can fall back to Steam
+ * rather than return events whose details it cannot resolve.
+ */
 export class AchievementUnlockedUserNewsEventHandler extends UserNewsFeedEventHandler<"achievement_unlocked"> {
 	protected readonly kind = "achievement_unlocked";
 	protected readonly eventType = SteamUserNewsEventType.AchievementUnlocked;

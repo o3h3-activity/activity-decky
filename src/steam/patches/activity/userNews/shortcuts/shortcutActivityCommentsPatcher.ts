@@ -2,7 +2,17 @@ import { callOriginal, replacePatch } from "@decky/ui";
 import { LifetimeScope } from "@steam/lifetimeScope";
 import type { SteamAppActivity } from "@typings/appActivityStore";
 
-/** Clears comment threads on every activity event after AddNewsEvents on shortcut activities. */
+/**
+ * Removes Steam Community comment threads from shortcut activity.
+ *
+ * Steam creates the thread descriptors while `AddNewsEvents` runs, so they
+ * must be cleared after its promise resolves. `BSupportsCommentThreads`
+ * checks whether the array has entries; emptying it stops the UI from
+ * loading Community threads that do not exist for these events.
+ *
+ * This applies to every event already in the shortcut's activity, not just
+ * the new batch. The original result is returned unchanged.
+ */
 export class ShortcutActivityCommentsPatcher {
 	private readonly patchedActivities = new WeakSet<SteamAppActivity>();
 	private readonly scope = new LifetimeScope("UserNews/ActivityComments");

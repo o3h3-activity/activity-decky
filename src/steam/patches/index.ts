@@ -47,16 +47,29 @@ const FETCH_REDIRECT_ROUTES = [
 
 const OVERVIEW_POLL_INTERVAL_MS = 500;
 
-/** Every Steam patch for one login; see `SessionLifecycle`. */
+/**
+ * Sets up the patches for the current Steam login.
+ *
+ * `window.appStore` can exist before it contains any apps. We wait for an
+ * overview because `OverviewPatch` needs its prototype, not just the store.
+ * Activity and request redirects are installed only if that patch succeeds:
+ * Steam otherwise hides the sections they provide data for. App-info and
+ * achievement patches can work without it.
+ *
+ * User News, request redirects, and image patches share a `ShortcutClanRegistry`.
+ * A clan registered while building the feed must also be recognized when
+ * Steam asks for its metadata or images. The scope removes all installed
+ * patches on logout and cancels any remaining readiness waits.
+ */
 export class SessionPatches implements SessionResource {
 	private readonly scope = new LifetimeScope("SessionPatches");
 
 	constructor(private readonly games: Games) {}
 
 	/**
-	 * Waits for an app overview, then starts best-effort patch installation.
-	 * Child patchers own their readiness waits and may still be installing when
-	 * this resolves. Logout cancels both this wait and child installation.
+	 * Starts installation once an overview is available. This can resolve
+	 * before child patches finish waiting for their own Steam dependencies.
+	 * Logging out cancels those waits.
 	 */
 	async mount(): Promise<void> {
 		// Steam can become ready long after login; logout cancels this wait.

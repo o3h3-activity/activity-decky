@@ -2,6 +2,16 @@ import type { Games } from "@steam/games";
 import type { ShortcutClanRegistry } from "@steam/patches/shortcuts/clanIdentity";
 import { type RedirectRoute, SteamRequestPatcher } from "./requestPatcher";
 
+/**
+ * Redirects matching GET requests made through `window.fetch`.
+ *
+ * Steam's clan lookup checks `response.ok` and calls `response.json()`.
+ * Route data must therefore be JSON in a real 200 `Response`, not a plain
+ * object. Other requests use the original fetch.
+ *
+ * Cleanup restores fetch only if our wrapper is still installed; otherwise
+ * it would overwrite a replacement installed later by Steam or another plugin.
+ */
 export class SteamFetchPatcher extends SteamRequestPatcher {
 	constructor(
 		routes: readonly RedirectRoute[],

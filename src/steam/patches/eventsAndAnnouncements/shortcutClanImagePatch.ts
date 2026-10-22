@@ -26,7 +26,17 @@ function clanAccountIdFromImageArg(value: unknown): number | undefined {
 	return undefined;
 }
 
-/** Session-owned image compatibility for clans registered by User News. */
+/**
+ * Replaces image URLs for registered shortcut clans with the fallback capsule.
+ *
+ * Steam builds clan image URLs from an account ID and an image hash. Our
+ * synthetic clans have no images on that CDN. Both `GenerateURLFromHashAndExt`
+ * and `GenerateURLFromHashAndExtAndLang` are patched because callers use both.
+ *
+ * The first argument can be a numeric account ID or a SteamID object. After
+ * extracting the account ID, we rewrite only clans in the shared registry.
+ * Other image requests keep Steam's URL.
+ */
 export class ShortcutClanImagePatch {
 	private readonly scope = new LifetimeScope("ShortcutClanImage");
 
