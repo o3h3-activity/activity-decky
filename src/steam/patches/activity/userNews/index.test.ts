@@ -260,12 +260,14 @@ function requestFeed(startTime = TIMES.afterCached, endTime = 0): unknown {
 	return callback([
 		undefined,
 		{
-			Body: () => ({
-				count: () => FEED_COUNT,
-				endtime: () => endTime,
-				filterappid: () => APP_ID,
-				starttime: () => startTime,
-			}),
+			Body() {
+				return {
+					count: () => FEED_COUNT,
+					endtime: () => endTime,
+					filterappid: () => APP_ID,
+					starttime: () => startTime,
+				};
+			},
 		},
 	]);
 }
@@ -351,19 +353,27 @@ beforeEach(() => {
 	mocks.queryClient = queryClient;
 	statuses = new UserStatusRegistry();
 	activity = {
-		AddNewsEvents: async () => undefined,
+		async AddNewsEvents() {
+			return undefined;
+		},
 		m_AchievementMap: new Map(),
 		m_bNoMoreHistoryAvailable: true,
 		m_mapActivityByDay: new Map([[0, { events: [] }]]),
 		m_rtNewestActivityTime: 200,
 		m_rtOldestActivityTime: 100,
-		SortEvents: () => undefined,
+		SortEvents() {
+			return undefined;
+		},
 	};
 
 	vi.stubGlobal("window", {
 		appActivityStore: {
 			CMInterface: {
-				steamid: { ConvertTo64BitString: () => CURRENT_STEAM_ID },
+				steamid: {
+					ConvertTo64BitString() {
+						return CURRENT_STEAM_ID;
+					},
+				},
 			},
 			m_mapAppActivity: new Map([[APP_ID, activity]]),
 		},
@@ -515,12 +525,14 @@ describe("SteamUserNewsPatcher", () => {
 		const result = mocks.callbacks.get("GetUserNews")?.([
 			undefined,
 			{
-				Body: () => ({
-					count: () => FEED_COUNT,
-					endtime: () => 0,
-					filterappid: () => APP_ID,
-					starttime: () => 0,
-				}),
+				Body() {
+					return {
+						count: () => FEED_COUNT,
+						endtime: () => 0,
+						filterappid: () => APP_ID,
+						starttime: () => 0,
+					};
+				},
 			},
 		]);
 
@@ -540,7 +552,11 @@ describe("SteamUserNewsPatcher", () => {
 
 		const result = mocks.callbacks.get("GetAppDetailsSpotlight")?.([
 			undefined,
-			{ Body: () => ({ appid: () => APP_ID }) },
+			{
+				Body() {
+					return { appid: () => APP_ID };
+				},
+			},
 		]);
 
 		expect(result).toBe(mocks.callOriginal);
@@ -568,7 +584,11 @@ describe("SteamUserNewsPatcher", () => {
 			expect(
 				mocks.callbacks.get("GetActivity")?.([
 					undefined,
-					{ Body: () => ({ appid: () => appId }) },
+					{
+						Body() {
+							return { appid: () => appId };
+						},
+					},
 				]),
 			).toBe(mocks.callOriginal);
 

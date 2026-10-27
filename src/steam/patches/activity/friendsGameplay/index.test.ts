@@ -172,7 +172,11 @@ async function requestGameplay(): Promise<GameplayResponse> {
 
 	return (await mocks.callback?.([
 		undefined,
-		{ Body: () => ({ appid: () => APP_ID }) },
+		{
+			Body() {
+				return { appid: () => APP_ID };
+			},
+		},
 	])) as GameplayResponse;
 }
 

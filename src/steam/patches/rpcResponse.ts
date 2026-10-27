@@ -16,6 +16,8 @@ export function createSteamRpcResponse<TBody>(
 ): RpcResponse<TBody> {
 	return {
 		Body: body,
-		GetEResult: () => result,
+		GetEResult() {
+			return result;
+		},
 	};
 }

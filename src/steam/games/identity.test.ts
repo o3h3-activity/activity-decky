@@ -68,8 +68,9 @@ const BROWSER_SHORTCUT: ShortcutDetails = {
 function stubShortcut(request: RequestAppDetails): void {
 	vi.stubGlobal("window", {
 		appDetailsStore: {
-			RequestAppDetails: async (appId: number) =>
-				appId === SHORTCUT_ID ? request() : undefined,
+			async RequestAppDetails(appId: number) {
+				return appId === SHORTCUT_ID ? request() : undefined;
+			},
 		},
 	});
 }

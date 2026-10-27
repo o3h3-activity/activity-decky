@@ -16,12 +16,14 @@ const requestArgs = (body: {
 }): unknown[] => [
 	undefined,
 	{
-		Body: () => ({
-			count: () => body.count,
-			endtime: () => body.endTime,
-			filterappid: () => body.appId,
-			starttime: () => body.startTime,
-		}),
+		Body() {
+			return {
+				count: () => body.count,
+				endtime: () => body.endTime,
+				filterappid: () => body.appId,
+				starttime: () => body.startTime,
+			};
+		},
 	},
 ];
 

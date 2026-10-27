@@ -26,10 +26,18 @@ const mocks = vi.hoisted(() => {
 		READY_TIMEOUT_MS: 15_000,
 		Resource,
 		appInfoStore: {
-			FlushPendingAppInfo: async () => undefined,
-			GetAppInfo: () => undefined,
-			LoadAppInfoBatch: async () => undefined,
-			QueueAppInfoRequest: async (_appId: number) => "original",
+			async FlushPendingAppInfo() {
+				return undefined;
+			},
+			GetAppInfo() {
+				return undefined;
+			},
+			async LoadAppInfoBatch() {
+				return undefined;
+			},
+			async QueueAppInfoRequest(_appId: number) {
+				return "original";
+			},
 		},
 		callOriginal: Symbol("callOriginal"),
 		isAppShortcut: vi.fn<(appId: number) => boolean>(),

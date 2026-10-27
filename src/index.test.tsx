@@ -10,7 +10,7 @@ const mocks = vi.hoisted(() => {
 		unMount: vi.fn<() => void>(),
 	};
 
-	function Steam(): typeof instance {
+	function createSteam(): typeof instance {
 		return instance;
 	}
 
@@ -21,7 +21,7 @@ const mocks = vi.hoisted(() => {
 		authorization: vi.fn<() => Promise<DeviceAuthorizationState>>(),
 		recognize: vi.fn<() => Promise<unknown[]>>(),
 		toast: vi.fn<(message: { body: string; title: string }) => void>(),
-		steam: Steam,
+		steam: createSteam,
 	};
 });
 

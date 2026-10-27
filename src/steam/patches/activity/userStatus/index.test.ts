@@ -173,7 +173,11 @@ describe("UserStatusPatcher", () => {
 
 		const result = mocks.callbacks.get("PostStatusToFriends")?.([
 			undefined,
-			{ Body: () => ({ appid: () => APP_ID, status_text: () => "Hello" }) },
+			{
+				Body() {
+					return { appid: () => APP_ID, status_text: () => "Hello" };
+				},
+			},
 		]);
 
 		expect(result).toBe(mocks.callOriginal);
@@ -208,7 +212,11 @@ describe("UserStatusPatcher", () => {
 
 		await mocks.callbacks.get("DeletePostedStatus")?.([
 			undefined,
-			{ Body: () => ({ postid: () => "post" }) },
+			{
+				Body() {
+					return { postid: () => "post" };
+				},
+			},
 		]);
 
 		expect(mocks.getRelease).toHaveBeenCalledExactlyOnceWith(APP_ID);

@@ -32,10 +32,11 @@ function createIdentity(): Identity {
 function setOverview(appType?: EAppType): void {
 	vi.stubGlobal("window", {
 		appStore: {
-			GetAppOverviewByAppID: () =>
-				isNil(appType)
+			GetAppOverviewByAppID() {
+				return isNil(appType)
 					? undefined
-					: { app_type: appType, third_party_mod: false },
+					: { app_type: appType, third_party_mod: false };
+			},
 		},
 	});
 }

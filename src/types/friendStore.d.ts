@@ -13,12 +13,4 @@ export type FriendState = {
 	persona?: FriendPersona;
 };
 
-export type SteamFriendStore = {
-	GetFriendState: (...args: unknown[]) => FriendState;
-};
-
-declare global {
-	interface Window {
-		friendStore?: SteamFriendStore;
-	}
-}
+export type SteamFriendStore = Pick<Window["friendStore"], "GetFriendState">;

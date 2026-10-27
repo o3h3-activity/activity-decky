@@ -22,7 +22,7 @@ export class AppStore {
 			return undefined;
 		}
 
-		const appStore = window.appStore as SteamAppStore;
+		const appStore = window.appStore as unknown as SteamAppStore;
 		const apps = appStore.m_mapApps;
 
 		if (isNil(apps)) {
@@ -48,7 +48,7 @@ export class AppStore {
 			return undefined;
 		}
 
-		const appStore = window.appStore as SteamAppStore;
+		const appStore = window.appStore as unknown as SteamAppStore;
 
 		if (Array.isArray(appStore.allApps) && appStore.allApps.length > 0) {
 			return appStore.allApps[0];
@@ -62,7 +62,7 @@ export class AppStore {
 			return undefined;
 		}
 
-		const appStore = window.appStore as SteamAppStore;
+		const appStore = window.appStore as unknown as SteamAppStore;
 		const first = appStore.m_mapApps?.values().next();
 
 		if (isNil(first) || first.done) {

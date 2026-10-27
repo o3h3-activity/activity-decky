@@ -31,7 +31,11 @@ export type DeckyAppStoreOverview = Parameters<
 	Window["appStore"]["GetIconURLForApp"]
 >[0];
 
-export type SteamAppStore = Window["appStore"] & {
+/** The live store maps numeric app IDs to overviews, unlike Decky's declaration. */
+export type SteamAppStore = Omit<
+	Window["appStore"],
+	"allApps" | "m_mapApps"
+> & {
 	allApps: SteamAppOverview[];
 	m_mapApps: Map<number, SteamAppOverview>;
 };

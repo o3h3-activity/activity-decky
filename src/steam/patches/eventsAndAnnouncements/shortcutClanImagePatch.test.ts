@@ -9,7 +9,9 @@ import { ShortcutClanImagePatch } from "./shortcutClanImagePatch";
 
 const mocks = vi.hoisted(() => ({
 	helper: {
-		GetBaseURL: () => "https://clan.steamstatic.com/images/",
+		GetBaseURL() {
+			return "https://clan.steamstatic.com/images/";
+		},
 		GenerateURLFromHashAndExt(...args: unknown[]): unknown {
 			return { baseURL: this.GetBaseURL(), args };
 		},
@@ -59,7 +61,11 @@ describe("shortcut clan image compatibility", () => {
 				return this.accountId;
 			},
 		};
-		const officialSteamId = { GetAccountID: () => OFFICIAL_CLAN_ACCOUNT_ID };
+		const officialSteamId = {
+			GetAccountID() {
+				return OFFICIAL_CLAN_ACCOUNT_ID;
+			},
+		};
 
 		for (const method of IMAGE_METHODS) {
 			expect(
@@ -99,8 +105,16 @@ describe("shortcut clan image compatibility", () => {
 				Number.POSITIVE_INFINITY,
 				{},
 				{ GetAccountID: CLAN_ACCOUNT_ID },
-				{ GetAccountID: () => String(CLAN_ACCOUNT_ID) },
-				{ GetAccountID: () => Number.NaN },
+				{
+					GetAccountID() {
+						return String(CLAN_ACCOUNT_ID);
+					},
+				},
+				{
+					GetAccountID() {
+						return Number.NaN;
+					},
+				},
 			]) {
 				expect(mocks.helper[method](clan, "hash", "jpg")).toEqual({
 					baseURL: mocks.helper.GetBaseURL(),
