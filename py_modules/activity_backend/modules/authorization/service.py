@@ -132,7 +132,9 @@ class DeviceAuthorizationClient:
         }
 
     async def _set_state(self, state: DeviceAuthorizationState) -> None:
-        """Store and broadcast the latest authorization state."""
+        """Store and broadcast only changes to the frontend-visible snapshot."""
+        if state == self._state:
+            return
         self._state = state
         await self._emitter(state.copy())
 

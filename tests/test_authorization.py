@@ -150,6 +150,32 @@ class DeviceAuthorizationTests(BackendTestCase, unittest.IsolatedAsyncioTestCase
 
         self.assertEqual(self.sleeps, [5, 10, 20, 10])
 
+    async def test_unchanged_pending_state_is_not_rebroadcast_during_retries(
+        self,
+    ) -> None:
+        """Keep polling through retries without duplicate frontend snapshots."""
+        with patch.object(
+            activity_api,
+            "request_json_status",
+            side_effect=[
+                self._response(201, self.start_body),
+                self._response(200, {"status": "pending"}),
+                None,
+                self._response(500, {"error": "unavailable"}),
+                self._response(200, {"status": "slow_down"}),
+                self._response(429, {"error": "rate_limited"}, 20),
+                self._response(200, {"status": "pending"}),
+                self._response(200, {"status": "denied"}),
+            ],
+        ) as request:
+            await self._start_and_wait()
+
+        self.assertEqual(request.call_count, 8)
+        self.assertEqual(
+            [call.args[1]["status"] for call in decky.emit.call_args_list],
+            ["starting", "pending", "denied"],
+        )
+
     async def test_token_limit_instruction_keeps_polling(self) -> None:
         """Publish the revocation instruction and continue the same grant."""
         approved = {
@@ -164,20 +190,24 @@ class DeviceAuthorizationTests(BackendTestCase, unittest.IsolatedAsyncioTestCase
             side_effect=[
                 self._response(201, self.start_body),
                 self._response(409, {"error": "token_limit"}),
+                self._response(409, {"error": "token_limit"}),
+                self._response(200, {"status": "pending"}),
                 self._response(200, approved),
             ],
         ):
             await self._start_and_wait()
 
-        self.assertEqual(self.sleeps, [5, 5])
+        self.assertEqual(self.sleeps, [5, 5, 5, 5])
         self.assertEqual(self.client.get_state()["status"], "signedIn")
         emitted_states = [call.args[1] for call in decky.emit.call_args_list]
-        self.assertTrue(
-            any(
-                state["status"] == "pending"
-                and "http://localhost:3000/settings/access-tokens" in state["message"]
-                for state in emitted_states
-            )
+        self.assertEqual(
+            [state["status"] for state in emitted_states],
+            ["starting", "pending", "pending", "signedIn"],
+        )
+        self.assertEqual(emitted_states[1]["message"], "")
+        self.assertIn(
+            "http://localhost:3000/settings/access-tokens",
+            emitted_states[2]["message"],
         )
 
     async def test_pending_state_publishes_code_expiry_and_access_tokens_url(
@@ -201,21 +231,15 @@ class DeviceAuthorizationTests(BackendTestCase, unittest.IsolatedAsyncioTestCase
         ):
             await self._start_and_wait()
 
-        pending = [
+        pending = next(
             call.args[1]
             for call in decky.emit.call_args_list
             if call.args[1]["status"] == "pending"
-        ]
-        self.assertEqual(
-            [state["codeExpiresAt"] for state in pending],
-            [1_600_000, 1_600_000],
         )
-        self.assertTrue(
-            all(
-                state["accessTokensUrl"]
-                == "http://localhost:3000/settings/access-tokens"
-                for state in pending
-            )
+        self.assertEqual(pending["codeExpiresAt"], 1_600_000)
+        self.assertEqual(
+            pending["accessTokensUrl"],
+            "http://localhost:3000/settings/access-tokens",
         )
         final_state = self.client.get_state()
         self.assertEqual(final_state["status"], "signedIn")
