@@ -30,4 +30,5 @@ export const deleteComment = authorizationGate.guardMutation("delete_comment");
  * Records a committed interval (epoch milliseconds), replacing persisted UTC daily totals at
  * `/api/v1/me/games/{gameId}/releases/{releaseId}/versions/{releaseVersionId}/playtime/days/{date}`.
  */
-export const recordPlaytime = authorizationGate.guardMutation("record_playtime");
+export const recordPlaytime =
+	authorizationGate.guardMutation("record_playtime");

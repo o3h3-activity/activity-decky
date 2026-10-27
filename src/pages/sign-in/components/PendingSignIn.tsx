@@ -46,12 +46,13 @@ export function PendingSignIn({
 					</div>
 
 					<div className="opacity-80">
-						{"Or open "}
+						<span>Or open </span>
 
 						<span className="font-bold break-all">
 							{displayUrl(state.accessTokensUrl)}
-						</span>{" "}
-						on another device and enter this code:
+						</span>
+
+						<span> on another device and enter this code:</span>
 					</div>
 
 					<div className="text-4xl font-bold tracking-widest">

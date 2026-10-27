@@ -10,6 +10,7 @@ import {
 	signOutActivity,
 	startDeviceAuthorization,
 } from "@api/account";
+import { signedInToast } from "@components/ActivityAccountCopy";
 import { batch, observable } from "@legendapp/state";
 import { navigateTo, ROUTES } from "@pages/routes";
 import type { LifetimeScope } from "@steam/lifetimeScope";
@@ -109,11 +110,7 @@ async function loadProfile(announceSignIn: boolean): Promise<void> {
 	});
 
 	if (announceSignIn) {
-		if (isNil(profile)) {
-			showSuccessToast("Signed in to Activity.");
-		} else {
-			showSuccessToast(`Signed in as ${profile.nickname}.`);
-		}
+		showSuccessToast(signedInToast(profile));
 	}
 }
 

@@ -99,9 +99,7 @@ export class Games implements SessionResource {
 				.then(() => {
 					this.queuedBatch = undefined;
 
-					return this.scope.signal.aborted
-						? undefined
-						: this.loadBatch(queued);
+					return this.scope.signal.aborted ? undefined : this.loadBatch(queued);
 				})
 				.finally(() => {
 					for (const appId of queued) {

@@ -1,6 +1,9 @@
 /* oxlint-disable react/forbid-component-props */
 import type { ActivityUser, DeviceAuthorizationState } from "@api/account";
-import { SIGNED_OUT_HINT } from "@components/ActivityAccountCopy";
+import {
+	SIGNED_OUT_HINT,
+	signedInPageMessage,
+} from "@components/ActivityAccountCopy";
 import { DialogBodyText, DialogButton, Spinner } from "@decky/ui";
 import { isNil } from "es-toolkit";
 import type { ReactElement } from "react";
@@ -69,30 +72,12 @@ function renderStarting(isBusy: boolean, onCancel: Action): ReactElement {
 
 function renderSignedIn({
 	hasWitnessedSignIn,
-	isBusy,
-	onClose,
 	profile,
 }: ActiveSignInContentProps): ReactElement {
-	let account = "to Activity";
-
-	if (!isNil(profile)) {
-		account = `as ${profile.nickname}`;
-	}
-
-	const message = hasWitnessedSignIn
-		? `You’re signed in ${account}. This screen closes in a moment.`
-		: `You’re already signed in ${account}.`;
-
 	return (
-		<>
-			<DialogBodyText>{message}</DialogBodyText>
-
-			<FocusableButtonRow>
-				<DialogButton disabled={isBusy} onClick={onClose}>
-					Close
-				</DialogButton>
-			</FocusableButtonRow>
-		</>
+		<DialogBodyText className="w-full text-center">
+			{signedInPageMessage(profile, hasWitnessedSignIn)}
+		</DialogBodyText>
 	);
 }
 

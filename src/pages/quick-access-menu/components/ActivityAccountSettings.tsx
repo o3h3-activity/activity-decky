@@ -3,7 +3,10 @@ import type {
 	DeviceAuthorizationState,
 	DeviceAuthorizationStatus,
 } from "@api/account";
-import { SIGNED_OUT_HINT } from "@components/ActivityAccountCopy";
+import {
+	SIGNED_IN_LABEL,
+	SIGNED_OUT_HINT,
+} from "@components/ActivityAccountCopy";
 import { useActivityAccount } from "@components/useActivityAccount";
 import {
 	ButtonItem,
@@ -122,7 +125,7 @@ function renderProfile(
 	if (!isNil(profile)) {
 		return renderField(
 			profile.nickname,
-			"Signed in to Activity",
+			SIGNED_IN_LABEL,
 			renderAvatar(profile.avatarUrl),
 		);
 	}
@@ -131,7 +134,7 @@ function renderProfile(
 		return (
 			<>
 				{renderField(
-					"Signed in to Activity",
+					SIGNED_IN_LABEL,
 					"Couldn’t load your profile.",
 					renderAvatar(),
 				)}

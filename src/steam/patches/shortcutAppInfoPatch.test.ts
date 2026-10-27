@@ -169,7 +169,11 @@ let session: SessionPatches;
 beforeEach(() => {
 	vi.useFakeTimers();
 	mocks.isAppShortcut.mockReturnValue(true);
-	vi.stubGlobal("window", Object.assign(new EventTarget(), { appDetailsStore: {} }));
+	vi.stubGlobal(
+		"window",
+		Object.assign(new EventTarget(), { appDetailsStore: {} }),
+	);
+
 	session = new SessionPatches(new mocks.Resource() as unknown as Games);
 });
 
@@ -217,7 +221,11 @@ describe("session shortcut app-info suppression without OverviewPatch", () => {
 			mocks.appInfoStore.QueueAppInfoRequest(mocks.SUPPORTED_SHORTCUT_ID),
 		).resolves.toBe("original");
 
-		vi.stubGlobal("window", Object.assign(new EventTarget(), { appDetailsStore: {} }));
+		vi.stubGlobal(
+			"window",
+			Object.assign(new EventTarget(), { appDetailsStore: {} }),
+		);
+
 		await vi.advanceTimersByTimeAsync(mocks.POLL_INTERVAL_MS);
 		await expect(
 			mocks.appInfoStore.QueueAppInfoRequest(mocks.SUPPORTED_SHORTCUT_ID),
@@ -230,7 +238,11 @@ describe("session shortcut app-info suppression without OverviewPatch", () => {
 		await vi.advanceTimersByTimeAsync(0);
 		session.unMount();
 
-		vi.stubGlobal("window", Object.assign(new EventTarget(), { appDetailsStore: {} }));
+		vi.stubGlobal(
+			"window",
+			Object.assign(new EventTarget(), { appDetailsStore: {} }),
+		);
+
 		await vi.advanceTimersByTimeAsync(mocks.POLL_INTERVAL_MS);
 		await expect(
 			mocks.appInfoStore.QueueAppInfoRequest(mocks.SUPPORTED_SHORTCUT_ID),
@@ -242,7 +254,11 @@ describe("session shortcut app-info suppression without OverviewPatch", () => {
 		await session.mount();
 		await vi.advanceTimersByTimeAsync(mocks.READY_TIMEOUT_MS);
 
-		vi.stubGlobal("window", Object.assign(new EventTarget(), { appDetailsStore: {} }));
+		vi.stubGlobal(
+			"window",
+			Object.assign(new EventTarget(), { appDetailsStore: {} }),
+		);
+
 		await vi.advanceTimersByTimeAsync(mocks.POLL_INTERVAL_MS);
 		await expect(
 			mocks.appInfoStore.QueueAppInfoRequest(mocks.SUPPORTED_SHORTCUT_ID),

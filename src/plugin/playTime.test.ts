@@ -8,7 +8,11 @@ const mocks = vi.hoisted(() => ({
 	record: vi.fn<() => Promise<{ data: unknown; ok: true }>>(),
 }));
 
-vi.mock(import("@api/activity"), () => ({ recordPlaytime: mocks.record }) as never);
+vi.mock(
+	import("@api/activity"),
+	() => ({ recordPlaytime: mocks.record }) as never,
+);
+
 vi.mock(
 	import("@utils/logger"),
 	() => ({ default: { error: vi.fn<() => void>() } }) as never,
@@ -81,14 +85,17 @@ describe("PlayTime session lifetime", () => {
 			releaseId: null,
 			releaseRevisionId: "version",
 		}),
-	])("does not submit an unidentified or unpublished release: %s", async (answer) => {
-		const getRelease = vi.fn<Games["getRelease"]>().mockResolvedValue(answer);
+	])(
+		"does not submit an unidentified or unpublished release: %s",
+		async (answer) => {
+			const getRelease = vi.fn<Games["getRelease"]>().mockResolvedValue(answer);
 
-		scope.track(new PlayTime({ getRelease } as unknown as Games)).mount();
-		commit();
-		await Promise.resolve();
-		await Promise.resolve();
+			scope.track(new PlayTime({ getRelease } as unknown as Games)).mount();
+			commit();
+			await Promise.resolve();
+			await Promise.resolve();
 
-		expect(mocks.record).not.toHaveBeenCalled();
-	});
+			expect(mocks.record).not.toHaveBeenCalled();
+		},
+	);
 });
