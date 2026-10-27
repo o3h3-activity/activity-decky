@@ -9,6 +9,7 @@ import { discDetectionStore } from "@stores/discDetection";
 import { injectTailwind } from "@ui/tailwind";
 import { showErrorToast } from "@ui/toasts";
 import logger, { setDebugEnabled } from "@utils/logger";
+import { isNil } from "es-toolkit";
 import type { Emitter } from "nanoevents";
 
 const DISC_DETECTION_UNAVAILABLE =
@@ -45,7 +46,7 @@ export class Plugin {
 		try {
 			const persisted = await getIsDebugEnabled();
 
-			if (persisted !== null) {
+			if (!isNil(persisted)) {
 				setDebugEnabled(persisted);
 			}
 		} catch (error: unknown) {

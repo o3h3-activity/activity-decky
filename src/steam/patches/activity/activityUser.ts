@@ -1,5 +1,6 @@
 import type { ActivityFriend } from "@typings/virtualFriend";
 import { isObjectLike } from "@utils/isObjectLike";
+import { isNil } from "es-toolkit";
 import { getAccountId, parseSteamId } from "./steamId";
 
 /** Validates an Activity API user and preserves its backend identity separately from the Steam friend projection; null profile fields are dropped. */
@@ -25,12 +26,8 @@ export function readActivityUser(
 	const avatarUrl = "avatarUrl" in value ? value.avatarUrl : undefined;
 
 	if (
-		(nickname !== undefined &&
-			nickname !== null &&
-			typeof nickname !== "string") ||
-		(avatarUrl !== undefined &&
-			avatarUrl !== null &&
-			typeof avatarUrl !== "string")
+		(!isNil(nickname) && typeof nickname !== "string") ||
+		(!isNil(avatarUrl) && typeof avatarUrl !== "string")
 	) {
 		return undefined;
 	}

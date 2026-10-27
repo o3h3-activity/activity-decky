@@ -326,7 +326,7 @@ export class SteamUserNewsPatcher {
 
 		const results = await this.createEventResults(feed, feedRequest, context);
 
-		if (results === undefined || this.scope.signal.aborted) {
+		if (isNil(results) || this.scope.signal.aborted) {
 			return undefined;
 		}
 
@@ -354,7 +354,7 @@ export class SteamUserNewsPatcher {
 		for (const handler of this.feedHandlers) {
 			const results = await handler.createFromFeed(feed.events, context);
 
-			if (results === undefined || this.scope.signal.aborted) {
+			if (isNil(results) || this.scope.signal.aborted) {
 				return undefined;
 			}
 

@@ -1,3 +1,5 @@
+import { isNil } from "es-toolkit";
+
 type MessageLogger = (message: string, ...args: unknown[]) => void;
 type OnceMessageLogger = MessageLogger & {
 	clear: () => void;
@@ -10,7 +12,7 @@ const oncePerMessage = (
 	let loggedMessages = new Set<string>();
 
 	const logOnce: OnceMessageLogger = (message: string, ...args: unknown[]) => {
-		if (isEnabled !== undefined && !isEnabled()) {
+		if (!isNil(isEnabled) && !isEnabled()) {
 			return;
 		}
 

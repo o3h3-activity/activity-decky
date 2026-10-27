@@ -133,7 +133,7 @@ export class OverviewPatch {
 					if (
 						this.app_type === EAppType.Shortcut &&
 						games.isSupported(this.appid) &&
-						this.m_gameid !== undefined
+						!isNil(this.m_gameid)
 					) {
 						logger.once.debug(
 							`[afterPatch][GetGameID] GetGameID pinned to shortcut gameid for appid=${this.appid}: ${this.m_gameid}`,

@@ -132,7 +132,7 @@ export abstract class AchievementsProvider {
 	private isInFailureBackoff(appId: number): boolean {
 		const failedAt = this.failedAtByAppId.get(appId);
 
-		if (failedAt === undefined) {
+		if (isNil(failedAt)) {
 			return false;
 		}
 

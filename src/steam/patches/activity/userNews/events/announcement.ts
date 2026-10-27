@@ -1,6 +1,7 @@
 import { getAnnouncements } from "@steam/patches/eventsAndAnnouncements/announcementSource";
 import type { ShortcutClanRegistry } from "@steam/patches/shortcuts/clanIdentity";
 import logger from "@utils/logger";
+import { isNil } from "es-toolkit";
 import { UserNewsRequests } from "../rpc/userNewsRequests";
 import { SteamUserNewsEventType } from "./steamUserNewsEventType";
 import type {
@@ -43,7 +44,7 @@ export class AnnouncementUserNewsEventHandler {
 				startTime: request.startTime,
 			});
 
-			if (events === undefined) {
+			if (isNil(events)) {
 				return [];
 			}
 

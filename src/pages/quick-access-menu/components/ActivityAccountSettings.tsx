@@ -23,6 +23,7 @@ import {
 	reloadProfile,
 	signOutOfActivity,
 } from "@stores/account";
+import { isNil } from "es-toolkit";
 import { type ReactElement, useEffect } from "react";
 import { MdAccountCircle, MdWarning } from "react-icons/md";
 import { AccessExpiryField } from "./AccessExpiryField";
@@ -118,7 +119,7 @@ function renderProfile(
 	profile: ActivityUser | undefined,
 	profileStatus: ProfileStatus,
 ): ReactElement {
-	if (profile !== undefined) {
+	if (!isNil(profile)) {
 		return renderField(
 			profile.nickname,
 			"Signed in to Activity",
@@ -179,7 +180,7 @@ function signedOutReason({
 }: DeviceAuthorizationState): string {
 	const reason = SIGNED_OUT_REASONS[status];
 
-	if (reason !== undefined) {
+	if (!isNil(reason)) {
 		return reason;
 	}
 
@@ -222,7 +223,7 @@ function renderAuthorization(props: SignedInProps): ReactElement {
 }
 
 function renderUnloaded(loadError: string | undefined): ReactElement {
-	if (loadError === undefined) {
+	if (isNil(loadError)) {
 		return renderField("Loading account…");
 	}
 
@@ -244,19 +245,18 @@ export function ActivityAccountSettings(): ReactElement {
 		void refreshActivityAccount();
 	}, []);
 
-	const authorizationContent =
-		authorization === undefined
-			? renderUnloaded(loadError)
-			: renderAuthorization({
-					authorization,
-					isBusy,
-					profile,
-					profileStatus,
-				});
+	const authorizationContent = isNil(authorization)
+		? renderUnloaded(loadError)
+		: renderAuthorization({
+				authorization,
+				isBusy,
+				profile,
+				profileStatus,
+			});
 
 	return (
 		<PanelSection
-			spinner={authorization === undefined && loadError === undefined}
+			spinner={isNil(authorization) && isNil(loadError)}
 			title="Account"
 		>
 			{authorizationContent}

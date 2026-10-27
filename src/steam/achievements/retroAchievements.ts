@@ -60,7 +60,7 @@ function mapRaToPlatform(response: RAResponse): PlatformAchievement[] {
 	);
 
 	return all.map((item) => {
-		const achieved = item.DateEarned !== undefined;
+		const achieved = !isNil(item.DateEarned);
 
 		return {
 			achieved,

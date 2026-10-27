@@ -1,4 +1,5 @@
 import type { DeviceAuthorizationState } from "@api/account";
+import { isNil } from "es-toolkit";
 
 export type StatusRow = Readonly<{ description?: string; value: string }>;
 
@@ -6,8 +7,8 @@ export function retroAchievementsRow(
 	authorization: DeviceAuthorizationState | undefined,
 	loadError: string | undefined,
 ): StatusRow {
-	if (authorization === undefined) {
-		if (loadError !== undefined) {
+	if (isNil(authorization)) {
+		if (!isNil(loadError)) {
 			return {
 				description: "Couldn’t load your Activity account status.",
 				value: "Unavailable",

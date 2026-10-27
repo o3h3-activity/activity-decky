@@ -21,6 +21,7 @@ import type { SteamPlayerService } from "@typings/playerService";
 import { showErrorToast } from "@ui/toasts";
 import { isObjectLike } from "@utils/isObjectLike";
 import logger from "@utils/logger";
+import { isNil } from "es-toolkit";
 import { UserStatusDeleteConfirmationModalPatcher } from "./deleteConfirmationModalPatcher";
 import {
 	describeStatusMutationFailure,
@@ -331,7 +332,7 @@ export class UserStatusPatcher {
 
 			if (
 				activityUser &&
-				activityUser.steamId !== null &&
+				!isNil(activityUser.steamId) &&
 				activityUser.steamId !== currentSteamId.toString()
 			) {
 				showErrorToast(

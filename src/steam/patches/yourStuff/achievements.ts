@@ -67,7 +67,7 @@ function isAlreadyInjected(
 	data: AppAchievements,
 ): boolean {
 	return (
-		current?.vecHighlight !== undefined &&
+		!isNil(current?.vecHighlight) &&
 		current.nAchieved === data.nAchieved &&
 		current.nTotal === data.nTotal &&
 		current.vecHighlight[0]?.strID === data.vecHighlight[0]?.strID
@@ -392,7 +392,7 @@ export class SteamYourStuffAchievementsPatcher {
 			throw new DOMException("Activity account changed", "AbortError");
 		}
 
-		if (mapped === undefined) {
+		if (isNil(mapped)) {
 			throw new Error(
 				`[Achievements] ${this.provider.name} metadata unavailable for appId=${appId}`,
 			);

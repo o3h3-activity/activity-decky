@@ -8,6 +8,7 @@ import {
 	refreshActivityAccount,
 	startSignIn,
 } from "@stores/account";
+import { isNil } from "es-toolkit";
 import {
 	type ReactElement,
 	useCallback,
@@ -48,14 +49,11 @@ function useAutoStart(): Readonly<{ isReady: boolean; prepare: () => void }> {
 				return;
 			}
 
-			if (
-				current !== undefined &&
-				AUTO_START_STATUSES[current.status] === true
-			) {
+			if (!isNil(current) && AUTO_START_STATUSES[current.status] === true) {
 				startSignIn();
 			}
 
-			setIsReady(current !== undefined);
+			setIsReady(!isNil(current));
 		})();
 	}, []);
 

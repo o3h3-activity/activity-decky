@@ -4,6 +4,7 @@ import type { ShortcutClanRegistry } from "@steam/patches/shortcuts/clanIdentity
 import { ClanImageHelper } from "@steam/proxy/clanImageHelper";
 import { isObjectLike } from "@utils/isObjectLike";
 import logger from "@utils/logger";
+import { isNil } from "es-toolkit";
 import { SAMPLE_EVENT_CAPSULE } from "./eventImages";
 
 function clanAccountIdFromImageArg(value: unknown): number | undefined {
@@ -65,10 +66,7 @@ export class ShortcutClanImagePatch {
 		const rewrite = (args: unknown[]): unknown => {
 			const clanAccountId = clanAccountIdFromImageArg(args[0]);
 
-			if (
-				clanAccountId !== undefined &&
-				this.shortcutClans.has(clanAccountId)
-			) {
+			if (!isNil(clanAccountId) && this.shortcutClans.has(clanAccountId)) {
 				return SAMPLE_EVENT_CAPSULE;
 			}
 

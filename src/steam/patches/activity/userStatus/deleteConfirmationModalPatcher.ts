@@ -1,6 +1,7 @@
 import { afterPatch, findModuleExport } from "@decky/ui";
 import { LifetimeScope } from "@steam/lifetimeScope";
 import logger from "@utils/logger";
+import { isNil } from "es-toolkit";
 import type { UserStatusRegistry } from "./statusRegistry";
 
 type DeleteConfirmationModal = Readonly<{
@@ -39,7 +40,7 @@ type MaybeModalManagerConstructor = {
 function isPromiseLike(value: unknown): value is PromiseLike<unknown> {
 	return (
 		(typeof value === "object" || typeof value === "function") &&
-		value !== null &&
+		!isNil(value) &&
 		"then" in value &&
 		typeof value.then === "function"
 	);

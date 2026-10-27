@@ -171,7 +171,7 @@ export abstract class SteamRequestPatcher {
 
 		this.throwIfDisposed();
 
-		if (outcome === undefined) {
+		if (isNil(outcome)) {
 			return fallback();
 		}
 

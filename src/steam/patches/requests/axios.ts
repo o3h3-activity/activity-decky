@@ -18,7 +18,7 @@ type AxiosLike = {
 
 function isAxiosLike(value: unknown): value is AxiosLike {
 	if (
-		value === null ||
+		isNil(value) ||
 		(typeof value !== "function" && typeof value !== "object")
 	) {
 		return false;
@@ -41,7 +41,7 @@ function isAxiosLike(value: unknown): value is AxiosLike {
 		isObjectLike(candidate.defaults) &&
 		(typeof candidate.CancelToken === "function" ||
 			typeof candidate.CancelToken === "object") &&
-		candidate.CancelToken !== null
+		!isNil(candidate.CancelToken)
 	);
 }
 

@@ -17,6 +17,7 @@ import type { GetFriendsGameplayInfoResponse } from "@typings/friendsGameplay";
 import type { SteamPlayerService } from "@typings/playerService";
 import type { QueryCacheEntry, SteamQueryClient } from "@typings/queryClient";
 import logger from "@utils/logger";
+import { isNil } from "es-toolkit";
 import { readRequestAppId } from "../protoRequest";
 import type { VirtualFriendPatcher } from "../virtualFriends";
 import { FriendsGameplayResponse } from "./friendsGameplayResponse";
@@ -47,9 +48,7 @@ function invalidateShortcutGameplay(client: SteamQueryClient): void {
 
 			const match = GAMEPLAY_INFO_QUERY_KEY_PATTERN.exec(key);
 
-			return (
-				match !== null && AppStore.isAppShortcut(Number(match[1])) === true
-			);
+			return !isNil(match) && AppStore.isAppShortcut(Number(match[1])) === true;
 		},
 	});
 }

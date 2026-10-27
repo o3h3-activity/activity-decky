@@ -1,4 +1,5 @@
 import type { DeviceAuthorizationState } from "@api/account";
+import { isNil } from "es-toolkit";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 type PluginDefinition = { onDismount(): void };
@@ -107,7 +108,7 @@ async function mountPlugin(): Promise<PluginDefinition> {
 	// Re-import to execute the plugin registration boundary independently per test.
 	await import("./index");
 
-	if (mocks.factory === undefined) {
+	if (isNil(mocks.factory)) {
 		throw new Error("Plugin factory was not registered");
 	}
 

@@ -6,6 +6,7 @@ import type {
 import type { ActivityFriend } from "@typings/virtualFriend";
 import { isObjectLike } from "@utils/isObjectLike";
 import { isNonNegativeSafeInteger } from "@utils/safeInteger";
+import { isNil } from "es-toolkit";
 
 /** Steam's gameplay body plus the Activity friends its `steamid`s must resolve to. */
 export type FriendsGameplay = Readonly<{
@@ -88,8 +89,8 @@ export abstract class FriendsGameplayResponse {
 			typeof hasPlayed !== "boolean" ||
 			!hasPlayed ||
 			!user ||
-			total === undefined ||
-			recent === undefined
+			isNil(total) ||
+			isNil(recent)
 		) {
 			return undefined;
 		}

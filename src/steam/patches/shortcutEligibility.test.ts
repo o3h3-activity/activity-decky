@@ -3,6 +3,7 @@ import { EAppType } from "@decky/ui/dist/globals/steam-client/App";
 import { Games } from "@steam/games";
 import { DiscIdentity, type Game } from "@steam/games/game";
 import type { Identity } from "@steam/games/identity";
+import { isNil } from "es-toolkit";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { isSupportedShortcut } from "./shortcutEligibility";
 
@@ -32,7 +33,7 @@ function setOverview(appType?: EAppType): void {
 	vi.stubGlobal("window", {
 		appStore: {
 			GetAppOverviewByAppID: () =>
-				appType === undefined
+				isNil(appType)
 					? undefined
 					: { app_type: appType, third_party_mod: false },
 		},

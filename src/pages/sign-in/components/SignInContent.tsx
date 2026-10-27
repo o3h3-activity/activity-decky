@@ -2,6 +2,7 @@
 import type { ActivityUser, DeviceAuthorizationState } from "@api/account";
 import { SIGNED_OUT_HINT } from "@components/ActivityAccountCopy";
 import { DialogBodyText, DialogButton, Spinner } from "@decky/ui";
+import { isNil } from "es-toolkit";
 import type { ReactElement } from "react";
 import { FocusableButtonRow } from "./FocusableButtonRow";
 import { PendingSignIn } from "./PendingSignIn";
@@ -74,7 +75,7 @@ function renderSignedIn({
 }: ActiveSignInContentProps): ReactElement {
 	let account = "to Activity";
 
-	if (profile !== undefined) {
+	if (!isNil(profile)) {
 		account = `as ${profile.nickname}`;
 	}
 
@@ -187,8 +188,8 @@ function renderActiveState(props: ActiveSignInContentProps): ReactElement {
 export function SignInContent(props: SignInContentProps): ReactElement {
 	const { authorization, isBusy, isReady, loadError, onRetryLoad } = props;
 
-	if (!isReady || authorization === undefined) {
-		if (loadError === undefined) {
+	if (!isReady || isNil(authorization)) {
+		if (isNil(loadError)) {
 			return renderProgress("Loading…");
 		}
 

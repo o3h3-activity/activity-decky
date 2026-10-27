@@ -13,6 +13,7 @@ import type {
 } from "@typings/storeItemCache";
 import { isObjectLike } from "@utils/isObjectLike";
 import { isSafeInteger } from "@utils/safeInteger";
+import { isNil } from "es-toolkit";
 
 type ShortcutStoreInfo = {
 	id: number;
@@ -263,7 +264,7 @@ export class ShortcutStoreItemPatcher {
 				continue;
 			}
 
-			if (query.previous === undefined) {
+			if (isNil(query.previous)) {
 				client.removeQueries({ queryKey: query.key, exact: true });
 			} else {
 				client.setQueryData(query.key, query.previous);
@@ -310,7 +311,7 @@ export class ShortcutStoreItemPatcher {
 			get(proxyTarget, property, receiver) {
 				const value: unknown = Reflect.get(proxyTarget, property, receiver);
 
-				if (value !== undefined || typeof property !== "string") {
+				if (!isNil(value) || typeof property !== "string") {
 					return value;
 				}
 

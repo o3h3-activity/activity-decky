@@ -19,6 +19,7 @@ import {
 	showSuccessToast,
 } from "@ui/toasts";
 import logger from "@utils/logger";
+import { isNil } from "es-toolkit";
 
 /** `none` outside a signed-in session; `failed` when the profile request failed or returned no user. */
 export type ProfileStatus = "failed" | "loaded" | "loading" | "none";
@@ -52,7 +53,7 @@ let snapshotVersion = 0;
 let profileVersion = 0;
 
 function isLive(): boolean {
-	return lifetime !== undefined && !lifetime.signal.aborted;
+	return !isNil(lifetime) && !lifetime.signal.aborted;
 }
 
 export function isSignInInProgress(
@@ -100,7 +101,7 @@ async function loadProfile(announceSignIn: boolean): Promise<void> {
 	batch(() => {
 		accountStore.profile.set(profile);
 
-		if (profile === undefined) {
+		if (isNil(profile)) {
 			accountStore.profileStatus.set("failed");
 		} else {
 			accountStore.profileStatus.set("loaded");
@@ -108,7 +109,7 @@ async function loadProfile(announceSignIn: boolean): Promise<void> {
 	});
 
 	if (announceSignIn) {
-		if (profile === undefined) {
+		if (isNil(profile)) {
 			showSuccessToast("Signed in to Activity.");
 		} else {
 			showSuccessToast(`Signed in as ${profile.nickname}.`);
@@ -242,7 +243,7 @@ export function mountActivityAccount(scope: LifetimeScope): void {
 	void (async () => {
 		const current = await refreshActivityAccount();
 
-		if (current !== undefined && current.status !== "signedIn") {
+		if (!isNil(current) && current.status !== "signedIn") {
 			promptSignIn();
 		}
 	})();

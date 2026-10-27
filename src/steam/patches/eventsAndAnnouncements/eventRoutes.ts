@@ -11,6 +11,7 @@ import type {
 	VanityClanIdResponse,
 } from "@typings/activity";
 import type { SteamAjaxRequestConfig } from "@typings/steamAjaxRequest";
+import { isNil } from "es-toolkit";
 import { getAnnouncement, getAnnouncements } from "./announcementSource";
 import { SAMPLE_EVENT_CAPSULE } from "./eventImages";
 
@@ -69,7 +70,7 @@ function matchAppOrClan(
 
 	const appId = parseNumeric(readParam(parsed, config, "appid"));
 
-	if (appId !== undefined && appId > 0) {
+	if (!isNil(appId) && appId > 0) {
 		return { appId, shouldBeRedirected: true };
 	}
 
@@ -77,7 +78,7 @@ function matchAppOrClan(
 		readParam(parsed, config, "clan_accountid"),
 	);
 
-	if (clanAccountId === undefined) {
+	if (isNil(clanAccountId)) {
 		return { shouldBeRedirected: false };
 	}
 
@@ -147,7 +148,7 @@ export class SteamVanityClanIdRoute {
 		if (gid) {
 			const clanAccountId = clanAccountIdFromSteamId64(gid[1]);
 
-			return clanAccountId === undefined
+			return isNil(clanAccountId)
 				? { shouldBeRedirected: false }
 				: { clanAccountId, shouldBeRedirected: true };
 		}
@@ -229,7 +230,7 @@ export class SteamAdjacentPartnerEventsRoute {
 			clanAccountId: match.clanAccountId,
 		});
 
-		return { events: events === undefined ? [] : [...events], success: 1 };
+		return { events: isNil(events) ? [] : [...events], success: 1 };
 	}
 }
 
@@ -252,7 +253,7 @@ export class SteamPartnerEventPermissionsRoute {
 		if (gid) {
 			const clanAccountId = clanAccountIdFromSteamId64(gid[1]);
 
-			return clanAccountId === undefined
+			return isNil(clanAccountId)
 				? { shouldBeRedirected: false }
 				: { clanAccountId, shouldBeRedirected: true };
 		}
