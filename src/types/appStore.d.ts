@@ -20,6 +20,9 @@ declare module "@decky/ui/dist/globals/steam-client/App" {
 export interface AppOverviewPrototype {
 	BIsModOrShortcut(this: SteamAppOverview): boolean;
 	GetGameID(this: SteamAppOverview): string;
+	GetPreservedState(
+		this: SteamAppOverview,
+	): Pick<SteamAppOverview, "icon_data" | "icon_data_format"> | undefined;
 	GetPrimaryAppID(this: SteamAppOverview): number;
 }
 

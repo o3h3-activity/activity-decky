@@ -27,8 +27,12 @@ const SHORTCUT_APP_ID_MASK = 4095;
  * `m_ulGameId.low & 4095`. Both methods are patched to keep their shortcut
  * behavior, using the unchanged `app_type` to identify shortcuts.
  *
- * These hooks live on the overview prototype and check `Games` support on
- * each call. Other apps keep their original behavior. `BIsShortcut()` is
+ * The same check gates lazy icon requests and icon-state preservation.
+ * App-store icon lookup and overview state hooks restore those shortcut
+ * paths so configured icons load and survive overview updates.
+ *
+ * These overview and app-store hooks check `Games` support on each call.
+ * Other apps keep their original behavior. `BIsShortcut()` is
  * left alone, but every caller of `BIsModOrShortcut()` sees the new result,
  * including the checks before loading game descriptions and associations.
  */
@@ -59,6 +63,8 @@ export class OverviewPatch {
 		this.patchBIsModOrShortcut(appOverviewProto);
 		this.patchGetGameID(appOverviewProto);
 		this.patchGetPrimaryAppID(appOverviewProto);
+		this.patchGetIconURLForApp();
+		this.patchGetPreservedState(appOverviewProto);
 
 		return true;
 	}
@@ -82,6 +88,7 @@ export class OverviewPatch {
 			["BIsModOrShortcut", proto.BIsModOrShortcut],
 			["GetGameID", proto.GetGameID],
 			["GetPrimaryAppID", proto.GetPrimaryAppID],
+			["GetPreservedState", proto.GetPreservedState],
 		].flatMap(([method, value]) =>
 			typeof value === "function" ? [] : [method],
 		);
@@ -163,6 +170,56 @@ export class OverviewPatch {
 
 				return callOriginal;
 			}),
+		);
+	}
+
+	private patchGetIconURLForApp(): void {
+		const games = this.games;
+
+		this.scope.add(
+			afterPatch(
+				window.appStore,
+				"GetIconURLForApp",
+				([overview]: SteamAppOverview[], ret: unknown) => {
+					if (
+						isNil(ret) &&
+						overview?.app_type === EAppType.Shortcut &&
+						games.isSupported(overview.appid) &&
+						isNil(overview.icon_data)
+					) {
+						SteamClient.Apps.RequestIconDataForApp(overview.appid);
+					}
+
+					return ret;
+				},
+			),
+		);
+	}
+
+	private patchGetPreservedState(proto: AppOverviewPrototype): void {
+		const games = this.games;
+
+		this.scope.add(
+			afterPatch(
+				proto,
+				"GetPreservedState",
+				function (this: SteamAppOverview, _args: unknown[], ret: unknown) {
+					if (
+						isNil(ret) &&
+						this.app_type === EAppType.Shortcut &&
+						games.isSupported(this.appid) &&
+						!isNil(this.icon_data) &&
+						this.icon_data.length > 0
+					) {
+						return {
+							icon_data: this.icon_data,
+							icon_data_format: this.icon_data_format,
+						};
+					}
+
+					return ret;
+				},
+			),
 		);
 	}
 
