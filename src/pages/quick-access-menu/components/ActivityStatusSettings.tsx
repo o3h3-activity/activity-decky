@@ -1,5 +1,5 @@
 import { Field, PanelSection, PanelSectionRow } from "@decky/ui";
-import { useSelector } from "@legendapp/state/react";
+import { useValue } from "@legendapp/state/react";
 import { accountStore } from "@stores/account";
 import {
 	type DiscDetectionStatus,
@@ -33,9 +33,9 @@ function renderStatus(
 
 /** What works on this Deck right now, beyond the account itself. */
 export function ActivityStatusSettings(): ReactElement {
-	const authorization = useSelector(() => accountStore.authorization.get());
-	const discDetection = useSelector(() => discDetectionStore.status.get());
-	const loadError = useSelector(() => accountStore.loadError.get());
+	const authorization = useValue(accountStore.authorization);
+	const discDetection = useValue(discDetectionStore.status);
+	const loadError = useValue(accountStore.loadError);
 
 	return (
 		<PanelSection title="Status">

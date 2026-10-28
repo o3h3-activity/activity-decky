@@ -54,8 +54,10 @@ jobs:
           node-version: "24"
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Lint and type-check frontend
+      - name: Lint frontend
         run: pnpm run lint:frontend
+      - name: Type-check frontend
+        run: pnpm run typecheck:frontend
       - name: Test frontend
         run: pnpm run test:frontend
 

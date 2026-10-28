@@ -32,11 +32,9 @@ const oncePerMessage = (
 };
 
 /**
- * Default debug state, resolved at build time: `process.env.NODE_ENV` is
- * statically replaced by rollup (`@rollup/plugin-replace`, defaulting to
- * `"production"`), so dev builds default to `true` and production builds to
- * `false`. The persisted `isDebugEnabled` Decky setting overrides this at
- * runtime through `setDebugEnabled`.
+ * Vite defines `process.env.NODE_ENV` as `"production"` for the distributed
+ * plugin, so debug logging defaults to off. The persisted `isDebugEnabled`
+ * Decky setting overrides this at runtime through `setDebugEnabled`.
  */
 const DEFAULT_DEBUG_ENABLED = process.env.NODE_ENV !== "production";
 

@@ -95,6 +95,7 @@ function renderField(
 			<Field
 				bottomSeparator="none"
 				description={description}
+				focusable
 				icon={icon}
 				label={label}
 			/>

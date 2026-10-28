@@ -1,10 +1,11 @@
 /* oxlint-disable react/forbid-component-props */
 import { PageBody } from "@components/PageBody";
 import { PageLayout } from "@components/PageLayout";
-import { useActivityAccount } from "@components/useActivityAccount";
 import { WelcomeAchievementsPreview } from "@components/WelcomeAchievementsPreview";
 import { WelcomeGamePreview } from "@components/WelcomeGamePreview";
 import { DialogButton, DialogButtonPrimary, Focusable } from "@decky/ui";
+import { useValue } from "@legendapp/state/react";
+import { accountStore } from "@stores/account";
 import { type ReactElement, type ReactNode, useState } from "react";
 import {
 	MdArrowBack,
@@ -158,12 +159,11 @@ export function SignInWelcome({
 	initiallyShowSignIn,
 	onClose,
 }: SignInWelcomeProps): ReactElement {
-	const { authorization } = useActivityAccount();
+	const status = useValue(() => accountStore.authorization.get()?.status);
 	const [step, setStep] = useState(initiallyShowSignIn ? SIGN_IN_STEP : 0);
 	const isSignInStep = step === SIGN_IN_STEP;
 	// Once signed in, the slides have nothing left to offer: Back becomes Close.
-	const closes =
-		step === 0 || (isSignInStep && authorization?.status === "signedIn");
+	const closes = step === 0 || (isSignInStep && status === "signedIn");
 	const label = backLabel(step, closes);
 
 	function onBack(): void {

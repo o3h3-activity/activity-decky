@@ -112,6 +112,7 @@ Run from the repository root after installing the development dependencies:
 | `pnpm run lint:frontend` | Biome, Oxlint, and ESLint frontend checks |
 | `pnpm run lint:python` | Ruff lint checks |
 | `pnpm run format:python:check` | Python formatting check |
+| `pnpm run typecheck:frontend` | Strict TypeScript source checking with `skipLibCheck` enabled |
 | `pnpm run typecheck:python` | Strict Python type checking with BasedPyright |
 | `pnpm run check:python` | Python lint, formatting, type checks, and tests |
 | `pnpm run test` | Frontend and backend tests |
@@ -119,7 +120,7 @@ Run from the repository root after installing the development dependencies:
 | `pnpm run test:python` | Python `unittest` discovery in `tests/` |
 | `pnpm run lint:fix` | Apply frontend lint/format fixes and Python lint/format fixes |
 
-Python scripts invoke `uv run --locked`. CI runs frontend checks, Python checks, and a separate Decky package build with a packaged native-extension smoke test. Tags beginning with `v` trigger release publication after those jobs succeed.
+Python scripts invoke `uv run --locked`. CI runs frontend linting, explicit TypeScript checking, frontend tests, Python checks, and a separate Decky package build with a packaged native-extension smoke test. Tags beginning with `v` trigger release publication after those jobs succeed.
 
 ## Acknowledgements and license
 

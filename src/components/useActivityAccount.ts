@@ -1,5 +1,5 @@
 import type { ActivityUser, DeviceAuthorizationState } from "@api/account";
-import { useSelector } from "@legendapp/state/react";
+import { useValue } from "@legendapp/state/react";
 import { accountStore, type ProfileStatus } from "@stores/account";
 
 export type ActivityAccountView = Readonly<{
@@ -12,11 +12,11 @@ export type ActivityAccountView = Readonly<{
 
 /** Re-renders on every change to the plugin-wide Activity account store. */
 export function useActivityAccount(): ActivityAccountView {
-	const authorization = useSelector(() => accountStore.authorization.get());
-	const isBusy = useSelector(() => accountStore.isBusy.get());
-	const loadError = useSelector(() => accountStore.loadError.get());
-	const profile = useSelector(() => accountStore.profile.get());
-	const profileStatus = useSelector(() => accountStore.profileStatus.get());
+	const authorization = useValue(accountStore.authorization);
+	const isBusy = useValue(accountStore.isBusy);
+	const loadError = useValue(accountStore.loadError);
+	const profile = useValue(accountStore.profile);
+	const profileStatus = useValue(accountStore.profileStatus);
 
 	return { authorization, isBusy, loadError, profile, profileStatus };
 }
