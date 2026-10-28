@@ -2,6 +2,7 @@
 import { PageBody } from "@components/PageBody";
 import { PageLayout } from "@components/PageLayout";
 import { WelcomeAchievementsPreview } from "@components/WelcomeAchievementsPreview";
+import { WelcomeDesktopPreview } from "@components/WelcomeDesktopPreview";
 import { WelcomeGamePreview } from "@components/WelcomeGamePreview";
 import { DialogButton, DialogButtonPrimary, Focusable } from "@decky/ui";
 import { useValue } from "@legendapp/state/react";
@@ -14,7 +15,7 @@ import {
 	MdInfoOutline,
 } from "react-icons/md";
 
-const STEPS = ["Games", "Achievements", "Sign in"] as const;
+const STEPS = ["Games", "Achievements", "Desktop Mode", "Sign in"] as const;
 const SIGN_IN_STEP = STEPS.length - 1;
 
 type SignInWelcomeProps = Readonly<{
@@ -55,6 +56,12 @@ const SLIDES: readonly WelcomeSlide[] = [
 		note: "Requires a RetroAchievements account linked to Activity.",
 		preview: <WelcomeAchievementsPreview />,
 		title: "Your RetroAchievements are back",
+	},
+	{
+		body: "View your activity, share comments, and track RetroAchievements on your game’s Steam page in Desktop Mode, too.",
+		note: "Set up Activity and manage its Decky settings in Game Mode.",
+		preview: <WelcomeDesktopPreview />,
+		title: "Your activity, in Desktop Mode too",
 	},
 ];
 
@@ -108,34 +115,41 @@ function stepMarkerClassName(index: number, step: number): string {
 	return "bg-white/10 text-slate-400";
 }
 
+/** Compact stepper: only the current step shows its label, so it shares one row with the buttons. */
 function renderProgress(step: number): ReactElement {
 	return (
 		<ol
 			aria-label="Setup progress"
-			className="m-0 flex list-none items-center gap-3 p-0"
+			className="m-0 flex min-w-0 list-none items-center gap-2 p-0"
 		>
 			{STEPS.map((label, index) => (
 				<li
 					aria-current={index === step ? "step" : undefined}
-					className="flex items-center gap-3"
+					className="flex items-center gap-2"
 					key={label}
 				>
 					{index > 0 && (
 						<span
 							aria-hidden="true"
-							className={`h-px w-6 ${index <= step ? "bg-[#1a9fff]/60" : "bg-white/15"}`}
+							className={`h-px w-5 ${index <= step ? "bg-[#1a9fff]/60" : "bg-white/15"}`}
 						/>
 					)}
 
-					<span className="flex items-center gap-2">
+					<span
+						className={`flex items-center gap-2 rounded-full ${index === step ? "bg-[#1a9fff]/15 pr-3" : ""}`}
+					>
 						<span
-							className={`flex size-6 items-center justify-center rounded-full text-xs font-bold ${stepMarkerClassName(index, step)}`}
+							className={`flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-bold ${stepMarkerClassName(index, step)}`}
 						>
 							{index < step ? <MdCheck aria-hidden="true" /> : index + 1}
 						</span>
 
 						<span
-							className={`text-sm ${index === step ? "font-semibold text-white" : "text-slate-400"}`}
+							className={
+								index === step
+									? "text-sm font-semibold whitespace-nowrap text-white"
+									: "sr-only"
+							}
 						>
 							{label}
 						</span>
