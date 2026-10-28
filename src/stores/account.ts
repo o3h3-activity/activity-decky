@@ -10,10 +10,10 @@ import {
 	signOutActivity,
 	startDeviceAuthorization,
 } from "@api/account";
-import { signedInToast } from "@components/ActivityAccountCopy";
 import { batch, observable } from "@legendapp/state";
 import { navigateTo, ROUTES } from "@pages/routes";
 import type { LifetimeScope } from "@steam/lifetimeScope";
+import { signedInToast } from "@ui/activityAccountCopy";
 import {
 	showErrorToast,
 	showSignInRequiredToast,

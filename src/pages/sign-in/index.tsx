@@ -3,7 +3,7 @@ import { Navigation } from "@decky/ui";
 import { accountStore } from "@stores/account";
 import type { ReactElement } from "react";
 import { SignInStep } from "./components/SignInStep";
-import { SignInWelcome } from "./components/SignInWelcome";
+import { SignInWelcome } from "./components/welcome/SignInWelcome";
 
 function onClose(): void {
 	Navigation.NavigateBack();

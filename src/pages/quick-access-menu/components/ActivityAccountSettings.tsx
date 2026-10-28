@@ -4,11 +4,6 @@ import type {
 	DeviceAuthorizationStatus,
 } from "@api/account";
 import {
-	SIGNED_IN_LABEL,
-	SIGNED_OUT_HINT,
-} from "@components/ActivityAccountCopy";
-import { useActivityAccount } from "@components/useActivityAccount";
-import {
 	ButtonItem,
 	ConfirmModal,
 	Field,
@@ -26,6 +21,8 @@ import {
 	reloadProfile,
 	signOutOfActivity,
 } from "@stores/account";
+import { useActivityAccount } from "@stores/useActivityAccount";
+import { SIGNED_IN_LABEL, SIGNED_OUT_HINT } from "@ui/activityAccountCopy";
 import { isNil } from "es-toolkit";
 import { type ReactElement, useEffect } from "react";
 import { MdAccountCircle, MdWarning } from "react-icons/md";

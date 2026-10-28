@@ -1,10 +1,7 @@
 /* oxlint-disable react/forbid-component-props */
 import type { ActivityUser, DeviceAuthorizationState } from "@api/account";
-import {
-	SIGNED_OUT_HINT,
-	signedInPageMessage,
-} from "@components/ActivityAccountCopy";
 import { DialogBodyText, DialogButton, Spinner } from "@decky/ui";
+import { SIGNED_OUT_HINT, signedInPageMessage } from "@ui/activityAccountCopy";
 import { isNil } from "es-toolkit";
 import type { ReactElement } from "react";
 import { FocusableButtonRow } from "./FocusableButtonRow";

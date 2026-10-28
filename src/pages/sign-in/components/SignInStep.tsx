@@ -1,12 +1,11 @@
 import type { DeviceAuthorizationStatus } from "@api/account";
-import { useValue } from "@legendapp/state/react";
 import {
-	accountStore,
 	cancelSignIn,
 	isSignInInProgress,
 	refreshActivityAccount,
 	startSignIn,
 } from "@stores/account";
+import { useActivityAccount } from "@stores/useActivityAccount";
 import { isNil } from "es-toolkit";
 import {
 	type ReactElement,
@@ -64,10 +63,7 @@ function useAutoStart(): Readonly<{ isReady: boolean; prepare: () => void }> {
 export function SignInStep({
 	onClose,
 }: Readonly<{ onClose: () => void }>): ReactElement {
-	const authorization = useValue(accountStore.authorization);
-	const isBusy = useValue(accountStore.isBusy);
-	const loadError = useValue(accountStore.loadError);
-	const profile = useValue(accountStore.profile);
+	const { authorization, isBusy, loadError, profile } = useActivityAccount();
 	const { isReady, prepare } = useAutoStart();
 	const [hasWitnessedSignIn, setHasWitnessedSignIn] = useState(false);
 	const status = authorization?.status;

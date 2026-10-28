@@ -1,9 +1,6 @@
 /* oxlint-disable react/forbid-component-props */
 import { PageBody } from "@components/PageBody";
 import { PageLayout } from "@components/PageLayout";
-import { WelcomeAchievementsPreview } from "@components/WelcomeAchievementsPreview";
-import { WelcomeDesktopPreview } from "@components/WelcomeDesktopPreview";
-import { WelcomeGamePreview } from "@components/WelcomeGamePreview";
 import { DialogButton, DialogButtonPrimary, Focusable } from "@decky/ui";
 import { useValue } from "@legendapp/state/react";
 import { accountStore } from "@stores/account";
@@ -14,6 +11,9 @@ import {
 	MdCheck,
 	MdInfoOutline,
 } from "react-icons/md";
+import { WelcomeAchievementsPreview } from "./WelcomeAchievementsPreview";
+import { WelcomeDesktopPreview } from "./WelcomeDesktopPreview";
+import { WelcomeGamePreview } from "./WelcomeGamePreview";
 
 const STEPS = ["Games", "Achievements", "Desktop Mode", "Sign in"] as const;
 const SIGN_IN_STEP = STEPS.length - 1;

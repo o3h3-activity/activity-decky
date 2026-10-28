@@ -8,8 +8,8 @@ import {
 	MdThumbDown,
 	MdThumbUp,
 } from "react-icons/md";
-import { DesktopAchievementsPreview } from "./welcome-preview/DesktopAchievementsPreview";
-import { DesktopActivityPreview } from "./welcome-preview/DesktopActivityPreview";
+import { DesktopAchievementsPreview } from "./preview/DesktopAchievementsPreview";
+import { DesktopActivityPreview } from "./preview/DesktopActivityPreview";
 
 /** Compact Desktop Mode illustration; no real game, activity, or account data. */
 export function WelcomeDesktopPreview(): ReactElement {
