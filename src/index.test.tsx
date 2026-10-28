@@ -50,6 +50,10 @@ vi.mock(
 						return async () => undefined;
 					}
 
+					case "get_play_time_sync_enabled": {
+						return async () => false;
+					}
+
 					default: {
 						return mocks.recognize;
 					}

@@ -11,7 +11,7 @@ TLDR: Social features for emulated of a simple Steam game now is supported for n
 
 - Recognize supported non-Steam games through local game-image identification and the Activity catalog.
 - View game activity and friends' gameplay, and post or delete your own Activity comments.
-- Record play sessions for recognized game releases.
+- Optionally share finished PlayTime sessions for recognized game releases.
 - Display RetroAchievementts.
 - Sign in through a QR code or device code.
 
@@ -40,6 +40,8 @@ Install an `Activity.zip` release package through Decky Loader's manual ZIP inst
 4. Open a supported non-Steam game's page to use the integrated activity features.
 
 Use an Activity account linked to the current Steam user to post comments. RetroAchievements progress requires RetroAchievements credentials in the Activity session.
+
+PlayTime sharing requires the PlayTime Decky plugin and is off until you opt in. Choose **Yes** during sign-in setup, or enable **Status → PlayTime integration** in Activity's Quick Access Menu settings. This control is only shown while signed in to Activity. Signing out preserves your saved choice, but hides the control and stops PlayTime uploads, including intervals still waiting for game recognition.
 
 The plugin settings show account status and game-detection availability. Enable **Advanced → Debug logging** when collecting logs for a bug report. If disc detection is unavailable, RetroAchievements progress for supported disc images cannot load; check that the installed package includes the native `game-anatomy` extension.
 

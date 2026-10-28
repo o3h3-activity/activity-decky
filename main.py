@@ -14,6 +14,7 @@ from activity_backend.modules.authorization.api import (
 from activity_backend.modules.catalog.api import GameRecognition
 
 DEBUG_ENABLED_SETTING = "isDebugEnabled"
+PLAY_TIME_SYNC_ENABLED_SETTING = "isPlayTimeSyncEnabled"
 
 
 def _apply_debug_logging(enabled: bool | None) -> None:
@@ -43,6 +44,16 @@ class Plugin:
         self.backend.settings.update({DEBUG_ENABLED_SETTING: enabled})
         _apply_debug_logging(enabled)
         decky.logger.info("Set %s=%s", DEBUG_ENABLED_SETTING, enabled)
+
+    async def get_play_time_sync_enabled(self) -> bool:
+        """Return whether PlayTime intervals may be sent to Activity; off until the user opts in."""
+        return self.backend.settings.get(PLAY_TIME_SYNC_ENABLED_SETTING, bool) is True
+
+    async def set_play_time_sync_enabled(self, enabled: bool) -> None:
+        """Persist the user's PlayTime sharing choice."""
+        enabled = bool(enabled)
+        self.backend.settings.update({PLAY_TIME_SYNC_ENABLED_SETTING: enabled})
+        decky.logger.info("Set %s=%s", PLAY_TIME_SYNC_ENABLED_SETTING, enabled)
 
     async def get_retro_achievements(self, rom_path: str) -> object:
         """Fetch the configured user's RetroAchievements progress for one ROM."""

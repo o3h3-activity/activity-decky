@@ -1,4 +1,6 @@
 import { recordPlaytime } from "@api/activity";
+import { accountStore } from "@stores/account";
+import { playTimeSyncStore } from "@stores/playTimeSync";
 import type { Games } from "@steam/games";
 import { hasActivityIdentifiers } from "@steam/games/game";
 import { LifetimeScope } from "@steam/lifetimeScope";
@@ -12,7 +14,7 @@ type PlayTimeInterval = {
 	startedAt: number;
 };
 
-/** Syncs recognised shortcuts for one Steam login; logout cancels pending lookups. */
+/** Syncs recognised shortcuts for one Steam login once the user opts in; logout cancels pending lookups. */
 export class PlayTime {
 	private readonly scope = new LifetimeScope("PlayTime");
 
@@ -58,9 +60,21 @@ export class PlayTime {
 			return;
 		}
 
+		if (
+			accountStore.authorization.peek()?.status !== "signedIn" ||
+			playTimeSyncStore.isEnabled.peek() !== true
+		) {
+			return;
+		}
+
 		const release = await this.games.getRelease(appId);
 
-		if (this.scope.signal.aborted || !hasActivityIdentifiers(release)) {
+		if (
+			this.scope.signal.aborted ||
+			accountStore.authorization.peek()?.status !== "signedIn" ||
+			playTimeSyncStore.isEnabled.peek() !== true ||
+			!hasActivityIdentifiers(release)
+		) {
 			return;
 		}
 

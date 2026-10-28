@@ -81,6 +81,22 @@ class PlaytimeTests(BackendTestCase, unittest.IsolatedAsyncioTestCase):
             if details["method"] == "PUT"
         ]
 
+    async def test_signed_out_does_not_send_playtime(self) -> None:
+        """Refuse recording without making an Activity HTTP request after sign-out."""
+        await self.plugin.sign_out_activity()
+        start = self._millis(2026, 3, 4, 12, 0, 0, 0)
+        with patch.object(activity_api, "request_json_status") as request:
+            result = await self.plugin.record_playtime(
+                self.game_id,
+                self.release_id,
+                self.revision_id,
+                start,
+                start + 1_000,
+            )
+
+        self.assertEqual(result, {"ok": False, "error": "notSignedIn", "status": 0})
+        request.assert_not_called()
+
     async def test_same_day_intervals_replace_the_cumulative_total(self) -> None:
         """Two committed intervals upload increasingly cumulative, floored seconds."""
         calls: list[tuple[str, dict[str, object]]] = []

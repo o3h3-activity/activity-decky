@@ -2,7 +2,6 @@ import type { DeviceAuthorizationStatus } from "@api/account";
 import { Navigation } from "@decky/ui";
 import { accountStore } from "@stores/account";
 import type { ReactElement } from "react";
-import { SignInStep } from "./components/SignInStep";
 import { SignInWelcome } from "./components/welcome/SignInWelcome";
 
 function onClose(): void {
@@ -21,9 +20,7 @@ export function SignInPage(): ReactElement {
 					accountStore.authorization.peek()?.status,
 				)}
 				onClose={onClose}
-			>
-				<SignInStep onClose={onClose} />
-			</SignInWelcome>
+			/>
 		</div>
 	);
 }

@@ -25,8 +25,6 @@ const AUTO_START_STATUSES: Partial<
 	signedOut: true,
 };
 
-const AUTO_CLOSE_MS = 3500;
-
 function useAutoStart(): Readonly<{ isReady: boolean; prepare: () => void }> {
 	const [isReady, setIsReady] = useState(false);
 	const requestId = useRef(0);
@@ -60,9 +58,16 @@ function useAutoStart(): Readonly<{ isReady: boolean; prepare: () => void }> {
 	return { isReady, prepare };
 }
 
+type SignInStepProps = Readonly<{
+	onClose: () => void;
+	/** Called once a sign-in started on this page completes. */
+	onSignedIn: () => void;
+}>;
+
 export function SignInStep({
 	onClose,
-}: Readonly<{ onClose: () => void }>): ReactElement {
+	onSignedIn,
+}: SignInStepProps): ReactElement {
 	const { authorization, isBusy, loadError, profile } = useActivityAccount();
 	const { isReady, prepare } = useAutoStart();
 	const [hasWitnessedSignIn, setHasWitnessedSignIn] = useState(false);
@@ -76,14 +81,10 @@ export function SignInStep({
 	}, [status]);
 
 	useEffect(() => {
-		if (!hasWitnessedSignIn || status !== "signedIn") {
-			return;
+		if (hasWitnessedSignIn && status === "signedIn") {
+			onSignedIn();
 		}
-
-		const timer = setTimeout(onClose, AUTO_CLOSE_MS);
-
-		return () => clearTimeout(timer);
-	}, [hasWitnessedSignIn, onClose, status]);
+	}, [hasWitnessedSignIn, onSignedIn, status]);
 
 	const onCancelPage = useCallback((): void => {
 		cancelSignIn();

@@ -4,28 +4,49 @@ import { PageLayout } from "@components/PageLayout";
 import { DialogButton, DialogButtonPrimary, Focusable } from "@decky/ui";
 import { useValue } from "@legendapp/state/react";
 import { accountStore } from "@stores/account";
-import { type ReactElement, type ReactNode, useState } from "react";
+import {
+	type ReactElement,
+	type ReactNode,
+	useCallback,
+	useState,
+} from "react";
 import {
 	MdArrowBack,
 	MdArrowForward,
 	MdCheck,
 	MdInfoOutline,
 } from "react-icons/md";
+import { SignInStep } from "../SignInStep";
+import { PlayTimeSyncChoice } from "./PlayTimeSyncChoice";
+import {
+	type PlayTimeSyncChoiceState,
+	usePlayTimeSyncChoice,
+} from "./usePlayTimeSyncChoice";
 import { WelcomeAchievementsPreview } from "./WelcomeAchievementsPreview";
 import { WelcomeDesktopPreview } from "./WelcomeDesktopPreview";
 import { WelcomeGamePreview } from "./WelcomeGamePreview";
+import { WelcomePlayTimePreview } from "./WelcomePlayTimePreview";
 
-const STEPS = ["Games", "Achievements", "Desktop Mode", "Sign in"] as const;
-const SIGN_IN_STEP = STEPS.length - 1;
+const STEPS = [
+	"Games",
+	"Achievements",
+	"Desktop Mode",
+	"Sign in",
+	"Set up",
+] as const;
+const SIGN_IN_STEP = 3;
+/** Reached only from a sign-in completed on this page. */
+const SETUP_STEP = 4;
 
 type SignInWelcomeProps = Readonly<{
-	children: ReactNode;
 	initiallyShowSignIn: boolean;
 	onClose: () => void;
 }>;
 
 type WelcomeSlide = Readonly<{
 	body: ReactNode;
+	/** Interactive content between the body and the note. */
+	choice?: ReactNode;
 	note: string;
 	preview: ReactElement;
 	title: string;
@@ -67,6 +88,7 @@ const SLIDES: readonly WelcomeSlide[] = [
 
 function renderSlide({
 	body,
+	choice,
 	note,
 	preview,
 	title,
@@ -87,6 +109,8 @@ function renderSlide({
 				<p className="m-0 text-base leading-6 text-pretty text-slate-300">
 					{body}
 				</p>
+
+				{choice}
 
 				<p className="m-0 flex items-center gap-2 text-sm leading-5 text-slate-400">
 					<MdInfoOutline aria-hidden="true" className="shrink-0" />
@@ -165,22 +189,71 @@ function backLabel(step: number, closes: boolean): string {
 		return "Not now";
 	}
 
+	if (step === SETUP_STEP) {
+		return "Skip";
+	}
+
 	return closes ? "Close" : "Back";
 }
 
+function primaryLabel(step: number): string {
+	if (step === SETUP_STEP) {
+		return "Done";
+	}
+
+	return step === SIGN_IN_STEP - 1 ? "Sign in" : "Next";
+}
+
+function renderSetupSlide(playTime: PlayTimeSyncChoiceState): ReactElement {
+	return renderSlide({
+		body: (
+			<>
+				<span className="font-semibold text-white">PlayTime</span>
+
+				<span>
+					{" "}
+					already tracks how long you play. Activity can send your finished
+					sessions to your Activity profile, so your play time shows up there
+					too.
+				</span>
+			</>
+		),
+		choice: (
+			<PlayTimeSyncChoice
+				disabled={playTime.isSaving}
+				isEnabled={playTime.isEnabled}
+				onChange={playTime.handleChoice}
+			/>
+		),
+		note: "Requires the PlayTime Decky plugin. Nothing is sent unless you choose Yes.",
+		preview: <WelcomePlayTimePreview isSharing={playTime.isEnabled} />,
+		title: "Share your play time with Activity",
+	});
+}
+
 export function SignInWelcome({
-	children,
 	initiallyShowSignIn,
 	onClose,
 }: SignInWelcomeProps): ReactElement {
 	const status = useValue(() => accountStore.authorization.get()?.status);
 	const [step, setStep] = useState(initiallyShowSignIn ? SIGN_IN_STEP : 0);
+	const playTime = usePlayTimeSyncChoice();
 	const isSignInStep = step === SIGN_IN_STEP;
-	// Once signed in, the slides have nothing left to offer: Back becomes Close.
-	const closes = step === 0 || (isSignInStep && status === "signedIn");
+	const isSetupStep = step === SETUP_STEP;
+	// Once signed in, the slides have nothing left to offer: Back becomes Close, or Skip in setup.
+	const closes =
+		step === 0 || isSetupStep || (isSignInStep && status === "signedIn");
 	const label = backLabel(step, closes);
 
+	const onSignedIn = useCallback((): void => {
+		setStep(SETUP_STEP);
+	}, []);
+
 	function onBack(): void {
+		if (playTime.isSaving) {
+			return;
+		}
+
 		if (closes) {
 			onClose();
 
@@ -190,13 +263,37 @@ export function SignInWelcome({
 		setStep(step - 1);
 	}
 
+	async function finishSetup(): Promise<void> {
+		if (await playTime.save()) {
+			onClose();
+		}
+	}
+
 	function onNext(): void {
+		if (isSetupStep) {
+			void finishSetup();
+
+			return;
+		}
+
 		setStep(step + 1);
 	}
 
 	function onCancel(event: CustomEvent): void {
 		event.stopPropagation();
 		onBack();
+	}
+
+	function renderStep(): ReactElement {
+		if (isSignInStep) {
+			return <SignInStep onClose={onClose} onSignedIn={onSignedIn} />;
+		}
+
+		if (isSetupStep) {
+			return renderSetupSlide(playTime);
+		}
+
+		return renderSlide(SLIDES[step]);
 	}
 
 	return (
@@ -208,9 +305,7 @@ export function SignInWelcome({
 			onCancelActionDescription={label}
 		>
 			<PageLayout>
-				<PageBody>
-					{isSignInStep ? children : renderSlide(SLIDES[step])}
-				</PageBody>
+				<PageBody>{renderStep()}</PageBody>
 
 				<div className="flex items-center justify-between gap-6 border-t border-white/10 pt-4">
 					{renderProgress(step)}
@@ -220,7 +315,7 @@ export function SignInWelcome({
 						flow-children="horizontal"
 						focusableIfEmpty
 					>
-						<DialogButton onClick={onBack}>
+						<DialogButton disabled={playTime.isSaving} onClick={onBack}>
 							<span className="flex items-center justify-center gap-2">
 								{!closes && <MdArrowBack aria-hidden="true" />}
 
@@ -229,11 +324,20 @@ export function SignInWelcome({
 						</DialogButton>
 
 						{!isSignInStep && (
-							<DialogButtonPrimary onClick={onNext} preferredFocus>
+							<DialogButtonPrimary
+								disabled={playTime.isSaving}
+								onClick={onNext}
+								// Setup starts on the Yes/No cards instead.
+								preferredFocus={!isSetupStep}
+							>
 								<span className="flex items-center justify-center gap-2">
-									{step === SIGN_IN_STEP - 1 ? "Sign in" : "Next"}
+									{primaryLabel(step)}
 
-									<MdArrowForward aria-hidden="true" />
+									{isSetupStep ? (
+										<MdCheck aria-hidden="true" />
+									) : (
+										<MdArrowForward aria-hidden="true" />
+									)}
 								</span>
 							</DialogButtonPrimary>
 						)}

@@ -48,6 +48,7 @@ export type RpcContract = {
 		[games: GameIdentityRequest[]],
 		GameIdentityResult[]
 	>;
+	get_play_time_sync_enabled: Query<[], boolean>;
 	get_retro_achievements: Query<[romPath: string], unknown>;
 	post_comment: Mutation<
 		[
@@ -73,6 +74,7 @@ export type RpcContract = {
 		ApiResult
 	>;
 	set_debug_enabled: Mutation<[enabled: boolean], void>;
+	set_play_time_sync_enabled: Mutation<[enabled: boolean], void>;
 	sign_out_activity: Mutation<[], unknown>;
 	start_device_authorization: Mutation<[], unknown>;
 };

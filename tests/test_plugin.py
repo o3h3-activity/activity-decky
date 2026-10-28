@@ -40,3 +40,13 @@ class PluginTests(BackendTestCase, unittest.IsolatedAsyncioTestCase):
         decky.logger.setLevel(logging.INFO)
         await activity_main.Plugin()._main()
         self.assertTrue(decky.logger.isEnabledFor(logging.DEBUG))
+
+    async def test_play_time_sync_is_off_until_the_user_opts_in(self) -> None:
+        """Default to not sharing, then persist and report the saved choice."""
+        plugin = activity_main.Plugin()
+
+        self.assertFalse(await plugin.get_play_time_sync_enabled())
+        await plugin.set_play_time_sync_enabled(True)
+        self.assertTrue(await activity_main.Plugin().get_play_time_sync_enabled())
+        await plugin.set_play_time_sync_enabled(False)
+        self.assertFalse(await plugin.get_play_time_sync_enabled())

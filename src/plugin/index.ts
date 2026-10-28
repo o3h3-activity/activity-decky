@@ -6,6 +6,7 @@ import { Steam } from "@steam";
 import { LifetimeScope } from "@steam/lifetimeScope";
 import { mountActivityAccount } from "@stores/account";
 import { discDetectionStore } from "@stores/discDetection";
+import { mountPlayTimeSync } from "@stores/playTimeSync";
 import { injectTailwind } from "@ui/tailwind";
 import { showErrorToast } from "@ui/toasts";
 import logger, { setDebugEnabled } from "@utils/logger";
@@ -31,6 +32,7 @@ export class Plugin {
 	mount(): void {
 		void this.loadDebugSetting();
 		mountActivityAccount(this.scope);
+		mountPlayTimeSync(this.scope);
 		void this.connectGameAnatomy();
 
 		this.steam.mount();

@@ -27,7 +27,7 @@ export function signedInPageMessage(
 	const account = signedInAccount(profile);
 
 	if (hasWitnessedSignIn) {
-		return `You’re signed in ${account}. This screen closes in a moment.`;
+		return `You’re signed in ${account}.`;
 	}
 
 	return `You’re already signed in ${account}.`;

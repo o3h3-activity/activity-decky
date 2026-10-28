@@ -35,3 +35,18 @@ export function retroAchievementsRow(
 		value: "Not linked",
 	};
 }
+
+export function playTimeSyncRow(isEnabled: boolean | undefined): StatusRow {
+	if (isNil(isEnabled)) {
+		return { value: "Checking…" };
+	}
+
+	if (isEnabled) {
+		return {
+			description: "Finished PlayTime sessions are sent to Activity.",
+			value: "On",
+		};
+	}
+
+	return { description: "Play time stays on this Deck.", value: "Off" };
+}
