@@ -23,7 +23,8 @@ Currently are supported only: **PlayStation, PlayStation 2, and PSP** games.
 | --- | --- |
 | ![Activity feed with status updates](assets/20261022114347_1.jpg)<br>Share your thoughts with your friends directly from Steam UI. | ![Achievement unlocks in the activity feed](assets/20261022114409_1.jpg)<br>Also you can watch your earned achievements dirrectly in **Activity** feed! Crazy... |
 | ![Achievement progress on the Your Stuff tab](assets/20261022114419_1.jpg)<br>Achievements are now back again in **Your stuff** tab. A forgotten technology since *Emuchievements* disappearead (**R.I.P**) :( ...... **now is BACK!** | ![Detailed achievement list for Tekken 5](assets/20261022114427_1.jpg)<br>Detailed view of your achievements! |
-| ![Friends' recent gameplay and activity](assets/20261022115943_1.jpg)<br>View your friends comments and see how much time they played! Just like in official Steam games! | soon™ |
+| ![Friends' recent gameplay and activity](assets/20261022115943_1.jpg)<br>View your friends comments and see how much time they played! Just like in official Steam games! | ![Activity in Desktop Mode](assets/Screenshot_20261028_005246.png)<br>Desktop Mode is also supported. You are still required to go through Gaming Mode in order to setup and interact with Decky's QAM |
+| soon™ | soon™ |
 
 ## Installation
 
