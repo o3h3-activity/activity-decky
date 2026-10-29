@@ -6,9 +6,12 @@ from dataclasses import dataclass
 from typing import Literal, TypedDict
 
 ApiErrorCode = Literal[
+    "accountMismatch",
     "invalidRequest",
     "notSignedIn",
     "unreachable",
+    "refused",
+    "sharingDisabled",
     "unauthorized",
     "httpError",
     "invalidResponse",

@@ -10,6 +10,9 @@ from backend_support import BackendTestCase, decky, make_authorization
 from activity_backend.infrastructure import activity_transport as activity_api
 from activity_backend.modules.activity import api as activity_proxy
 from activity_backend.modules.activity.adapters.activity_api import ActivityApiEndpoint
+from activity_backend.modules.activity.adapters.pending_playtime import (
+    SettingsPendingPlaytime,
+)
 from activity_backend.modules.activity.adapters.playtime_totals import (
     SettingsPlaytimeTotals,
 )
@@ -37,6 +40,8 @@ class ActivityProxyTests(BackendTestCase, unittest.IsolatedAsyncioTestCase):
             self.authorization,
             decky.logger,
             SettingsPlaytimeTotals(self.settings()),
+            SettingsPendingPlaytime(self.settings()),
+            lambda: True,
             self.authorization.get_user,
         )
 

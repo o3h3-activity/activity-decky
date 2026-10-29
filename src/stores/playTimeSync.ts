@@ -17,6 +17,13 @@ export const playTimeSyncStore = observable<PlayTimeSyncStore>({
 	isEnabled: undefined,
 });
 
+/** Whether PlayTime intervals may be collected and uploaded: signed in and opted in. */
+export const isPlayTimeSharingActive = observable(
+	() =>
+		accountStore.authorization.status.get() === "signedIn" &&
+		playTimeSyncStore.isEnabled.get() === true,
+);
+
 /** Bumped by each saved choice and by unmount, so a slower load never overwrites them. */
 let generation = 0;
 

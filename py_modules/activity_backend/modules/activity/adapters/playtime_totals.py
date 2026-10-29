@@ -6,13 +6,14 @@ from typing import cast
 
 from activity_backend.shared import Settings
 
-from ..playtime import PlaytimeLedger
+from ..playtime import PlaytimeLedger, PlaytimeWithdrawal
+from .settings_mapping import mapping_copy
 
 PLAYTIME_TOTALS_SETTING = "playtimeTotals"
 
 
 class SettingsPlaytimeTotals:
-    """Persist exact intervals and their accumulated UTC-day milliseconds."""
+    """Persist totals, interval identities, and pending refusal restorations."""
 
     def __init__(self, settings: Settings) -> None:
         self._settings: Settings = settings
@@ -38,6 +39,7 @@ class SettingsPlaytimeTotals:
         return PlaytimeLedger(
             days=self._decode_days(values.get("days")),
             intervals=self._decode_intervals(values.get("intervals")),
+            withdrawals=self._decode_withdrawals(values.get("withdrawals")),
         )
 
     def save(
@@ -50,13 +52,21 @@ class SettingsPlaytimeTotals:
     ) -> None:
         """Atomically replace this ledger while retaining other account data."""
         raw = self._settings.get(PLAYTIME_TOTALS_SETTING, object)
-        root = self._mapping_copy(raw)
-        account = self._mapping_copy(root.get(account_id))
-        game = self._mapping_copy(account.get(game_id))
-        release = self._mapping_copy(game.get(release_id))
+        root = mapping_copy(raw)
+        account = mapping_copy(root.get(account_id))
+        game = mapping_copy(account.get(game_id))
+        release = mapping_copy(game.get(release_id))
         release[release_revision_id] = {
             "days": dict(sorted(ledger.days.items())),
             "intervals": [list(interval) for interval in sorted(ledger.intervals)],
+            "withdrawals": [
+                {
+                    "interval": list(interval),
+                    "status": withdrawal.status,
+                    "days": list(withdrawal.days),
+                }
+                for interval, withdrawal in sorted(ledger.withdrawals.items())
+            ],
         }
         game[release_id] = release
         account[game_id] = game
@@ -79,16 +89,6 @@ class SettingsPlaytimeTotals:
         return current
 
     @staticmethod
-    def _mapping_copy(value: object) -> dict[str, object]:
-        if not isinstance(value, dict):
-            return {}
-        return {
-            key: item
-            for key, item in cast(dict[object, object], value).items()
-            if isinstance(key, str)
-        }
-
-    @staticmethod
     def _decode_days(value: object) -> dict[str, int]:
         if not isinstance(value, dict):
             return {}
@@ -102,24 +102,57 @@ class SettingsPlaytimeTotals:
         }
 
     @staticmethod
+    def _decode_interval(value: object) -> tuple[int, int] | None:
+        """Decode one nondecreasing integer pair from persisted settings."""
+        if not isinstance(value, list):
+            return None
+        interval = cast(list[object], value)
+        if (
+            len(interval) == 2
+            and isinstance(interval[0], int)
+            and not isinstance(interval[0], bool)
+            and isinstance(interval[1], int)
+            and not isinstance(interval[1], bool)
+            and interval[1] >= interval[0]
+        ):
+            return (interval[0], interval[1])
+        return None
+
+    @staticmethod
     def _decode_intervals(value: object) -> set[tuple[int, int]]:
         if not isinstance(value, list):
             return set()
         intervals: set[tuple[int, int]] = set()
-        for value_interval in cast(list[object], value):
-            if not isinstance(value_interval, list):
-                continue
-            interval = cast(list[object], value_interval)
-            if (
-                len(interval) == 2
-                and isinstance(interval[0], int)
-                and not isinstance(interval[0], bool)
-                and isinstance(interval[1], int)
-                and not isinstance(interval[1], bool)
-                and interval[1] >= interval[0]
-            ):
-                intervals.add((interval[0], interval[1]))
+        for raw in cast(list[object], value):
+            interval = SettingsPlaytimeTotals._decode_interval(raw)
+            if interval is not None:
+                intervals.add(interval)
         return intervals
+
+    @staticmethod
+    def _decode_withdrawals(value: object) -> dict[tuple[int, int], PlaytimeWithdrawal]:
+        if not isinstance(value, list):
+            return {}
+        withdrawals: dict[tuple[int, int], PlaytimeWithdrawal] = {}
+        for raw in cast(list[object], value):
+            if not isinstance(raw, dict):
+                continue
+            entry = cast(dict[object, object], raw)
+            interval = SettingsPlaytimeTotals._decode_interval(entry.get("interval"))
+            status = entry.get("status")
+            days = entry.get("days")
+            if (
+                interval is None
+                or not isinstance(status, int)
+                or isinstance(status, bool)
+                or not isinstance(days, list)
+            ):
+                continue
+            withdrawals[interval] = PlaytimeWithdrawal(
+                status,
+                [day for day in cast(list[object], days) if isinstance(day, str)],
+            )
+        return withdrawals
 
 
 __all__ = ["PLAYTIME_TOTALS_SETTING", "SettingsPlaytimeTotals"]

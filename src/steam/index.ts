@@ -1,10 +1,11 @@
 import type { Events } from "@events";
 import type { Emitter } from "nanoevents";
-import { PlayTime } from "../plugin/playTime";
 import { Games } from "./games";
 import { LifetimeScope } from "./lifetimeScope";
 import { MiddlewareManager } from "./middleware";
 import { SessionPatches } from "./patches";
+import { PlayTime } from "./playTime";
+import { App } from "./proxy/app";
 import { SessionLifecycle } from "./sessionLifecycle";
 import { UserStateManager } from "./userStateManager";
 
@@ -15,12 +16,15 @@ export class Steam {
 	private readonly session = new SessionLifecycle(() => {
 		const scope = new LifetimeScope("SteamSession");
 		const games = scope.track(new Games());
-		const playTime = scope.track(new PlayTime(games));
+		const steamId = App.getCurrentUserIdAsU64();
+		const playTime = steamId
+			? scope.track(new PlayTime(steamId, games))
+			: undefined;
 		const patches = scope.track(new SessionPatches(games));
 
 		return {
 			async mount(): Promise<void> {
-				playTime.mount();
+				playTime?.mount();
 				await games.mount();
 
 				if (!scope.signal.aborted) {

@@ -1,9 +1,12 @@
 /** Mirrors `ApiErrorCode` in py_modules/activity_backend/modules/activity/results.py. */
 export type ApiErrorCode =
+	| "accountMismatch"
 	| "httpError"
 	| "invalidRequest"
 	| "invalidResponse"
 	| "notSignedIn"
+	| "refused"
+	| "sharingDisabled"
 	| "unauthorized"
 	| "unreachable";
 

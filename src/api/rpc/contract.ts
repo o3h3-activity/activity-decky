@@ -1,4 +1,5 @@
 import type { ActivityUser } from "../account";
+import type { PendingPlaytime } from "../activity";
 import type { GameRecognitionResult } from "../catalog";
 import type { GameIdentityRequest, GameIdentityResult } from "../discIdentity";
 import type { ApiResult } from "./result";
@@ -32,6 +33,10 @@ export type RpcContract = {
 		],
 		ApiResult
 	>;
+	enqueue_playtime: Mutation<
+		[steamId: string, appId: number, startedAt: number, endedAt: number],
+		boolean
+	>;
 	game_anatomy_handshake: Query<[], boolean>;
 	get_activity: Query<
 		[gameId: string, releaseId: string, releaseRevisionId: string],
@@ -48,6 +53,7 @@ export type RpcContract = {
 		[games: GameIdentityRequest[]],
 		GameIdentityResult[]
 	>;
+	get_pending_playtime: Query<[steamId: string], PendingPlaytime[]>;
 	get_play_time_sync_enabled: Query<[], boolean>;
 	get_retro_achievements: Query<[romPath: string], unknown>;
 	post_comment: Mutation<
@@ -70,6 +76,8 @@ export type RpcContract = {
 			releaseRevisionId: string,
 			startedAt: number,
 			endedAt: number,
+			steamId: string,
+			appId: number,
 		],
 		ApiResult
 	>;

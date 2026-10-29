@@ -9,6 +9,12 @@ from activity_backend.infrastructure.settings import SETTINGS_FILE_NAME, Setting
 from activity_backend.modules.achievements.adapters.http import RetroAchievementsHttpApi
 from activity_backend.modules.achievements.api import RetroAchievementsClient
 from activity_backend.modules.activity.adapters.activity_api import ActivityApiEndpoint
+from activity_backend.modules.activity.adapters.pending_playtime import (
+    SettingsPendingPlaytime,
+)
+from activity_backend.modules.activity.adapters.playtime_sharing import (
+    is_playtime_sharing_enabled,
+)
 from activity_backend.modules.activity.adapters.playtime_totals import (
     SettingsPlaytimeTotals,
 )
@@ -79,6 +85,8 @@ def build_backend(
             authorization,
             logger,
             SettingsPlaytimeTotals(settings),
+            SettingsPendingPlaytime(settings),
+            lambda: is_playtime_sharing_enabled(settings),
             authorization.get_user,
         ),
         achievements=RetroAchievementsClient(

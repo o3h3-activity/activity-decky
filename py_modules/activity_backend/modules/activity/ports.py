@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Protocol
 
-from .playtime import PlaytimeLedger
+from .playtime import PendingPlaytime, PlaytimeLedger, PlaytimeRequest
 from .results import EndpointResult
 from .validation import ActivityQuery, CommentPayload
 
@@ -79,4 +79,36 @@ class PlaytimeTotals(Protocol):
         ...
 
 
-__all__ = ["ActivityEndpoint", "PlaytimeTotals"]
+class PendingPlaytimeStore(Protocol):
+    """Persist unresolved committed intervals owned by Steam account."""
+
+    def load(self, steam_id: str) -> list[PendingPlaytime]:
+        """Load one Steam account's unresolved intervals."""
+        ...
+
+    def enqueue(
+        self, steam_id: str, app_id: int, started_at: int, ended_at: int
+    ) -> bool:
+        """Persist one exact interval unless already queued or acknowledged; True if new."""
+        ...
+
+    def bind(
+        self, steam_id: str, app_id: int, request: PlaytimeRequest
+    ) -> PlaytimeRequest | None:
+        """Queue the interval if absent; return its first bound identity, None if uploaded."""
+        ...
+
+    def acknowledge(
+        self, steam_id: str, app_id: int, started_at: int, ended_at: int
+    ) -> None:
+        """Move one fully uploaded interval into the bounded acknowledged history."""
+        ...
+
+    def discard(
+        self, steam_id: str, app_id: int, started_at: int, ended_at: int
+    ) -> None:
+        """Drop one interval Activity permanently refused."""
+        ...
+
+
+__all__ = ["ActivityEndpoint", "PendingPlaytimeStore", "PlaytimeTotals"]

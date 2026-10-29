@@ -6,7 +6,12 @@ from pathlib import Path
 
 import decky
 from activity_backend.bootstrap import Backend, build_backend
-from activity_backend.modules.activity.api import ApiResult
+from activity_backend.modules.activity.api import (
+    PLAY_TIME_SYNC_ENABLED_SETTING,
+    ApiResult,
+    PendingPlaytime,
+    is_playtime_sharing_enabled,
+)
 from activity_backend.modules.authorization.api import (
     ActivityUser,
     DeviceAuthorizationState,
@@ -14,7 +19,6 @@ from activity_backend.modules.authorization.api import (
 from activity_backend.modules.catalog.api import GameRecognition
 
 DEBUG_ENABLED_SETTING = "isDebugEnabled"
-PLAY_TIME_SYNC_ENABLED_SETTING = "isPlayTimeSyncEnabled"
 
 
 def _apply_debug_logging(enabled: bool | None) -> None:
@@ -47,7 +51,7 @@ class Plugin:
 
     async def get_play_time_sync_enabled(self) -> bool:
         """Return whether PlayTime intervals may be sent to Activity; off until the user opts in."""
-        return self.backend.settings.get(PLAY_TIME_SYNC_ENABLED_SETTING, bool) is True
+        return is_playtime_sharing_enabled(self.backend.settings)
 
     async def set_play_time_sync_enabled(self, enabled: bool) -> None:
         """Persist the user's PlayTime sharing choice."""
@@ -127,6 +131,18 @@ class Plugin:
             game_id, release_id, release_revision_id, comment_id
         )
 
+    async def enqueue_playtime(
+        self, steam_id: object, app_id: object, started_at: object, ended_at: object
+    ) -> bool:
+        """Persist one committed PlayTime interval without calling Activity."""
+        return await self.backend.activity.enqueue_playtime(
+            steam_id, app_id, started_at, ended_at
+        )
+
+    async def get_pending_playtime(self, steam_id: object) -> list[PendingPlaytime]:
+        """Return unresolved PlayTime intervals owned by one Steam account."""
+        return await self.backend.activity.get_pending_playtime(steam_id)
+
     async def record_playtime(
         self,
         game_id: object,
@@ -134,10 +150,18 @@ class Plugin:
         release_revision_id: object,
         started_at: object,
         ended_at: object,
+        steam_id: object,
+        app_id: object,
     ) -> ApiResult:
-        """Record a played interval for one recognised release revision."""
+        """Upload one resolved, durably queued PlayTime interval."""
         return await self.backend.activity.record_playtime(
-            game_id, release_id, release_revision_id, started_at, ended_at
+            game_id,
+            release_id,
+            release_revision_id,
+            started_at,
+            ended_at,
+            steam_id,
+            app_id,
         )
 
     async def _main(self) -> None:
