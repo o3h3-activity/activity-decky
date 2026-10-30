@@ -1,8 +1,10 @@
 import type { Games } from "@steam/games";
 import { LifetimeScope } from "@steam/lifetimeScope";
+import { App } from "@steam/proxy/app";
 import { accountStore } from "@stores/account";
 import { isPlayTimeSharingActive } from "@stores/playTimeSync";
 import logger from "@utils/logger";
+import { isNil } from "es-toolkit";
 import { parsePlayTimeInterval } from "./event";
 import { canSharePlayTime } from "./policy";
 import { PlayTimeQueue } from "./queue";
@@ -11,13 +13,19 @@ import { PlayTimeSync } from "./sync";
 /** Dispatched on `window` by the PlayTime Decky plugin for each finished play interval. */
 const PLAYTIME_INTERVAL_EVENT = "playtime:interval-committed:v1";
 
-/** Collects locally supported PlayTime intervals and replays them for one Steam login. */
+/** Per-login collaborators; absent when Steam exposes no current user. */
+interface PlayTimeAccount {
+	readonly queue: PlayTimeQueue;
+	readonly steamId: string;
+	readonly sync: PlayTimeSync;
+}
+
+/** Collects locally supported PlayTime intervals and replays them for the current Steam login. */
 export class PlayTime {
 	private readonly scope = new LifetimeScope("PlayTime");
+	private readonly account: PlayTimeAccount | undefined;
 	private collectionGeneration = 0;
 	private mounted = false;
-	private readonly queue: PlayTimeQueue;
-	private readonly sync: PlayTimeSync;
 
 	private readonly onInterval = (event: Event): void => {
 		void this.handle(event);
@@ -30,16 +38,23 @@ export class PlayTime {
 		}
 	};
 
-	constructor(
-		private readonly steamId: string,
-		private readonly games: Games,
-	) {
-		this.queue = new PlayTimeQueue(steamId);
-		this.sync = this.scope.track(new PlayTimeSync(this.queue, games, steamId));
+	constructor(private readonly games: Games) {
+		const steamId = App.getCurrentUserIdAsU64();
+
+		if (!steamId) {
+			this.account = undefined;
+
+			return;
+		}
+
+		const queue = new PlayTimeQueue(steamId);
+		const sync = this.scope.track(new PlayTimeSync(queue, games, steamId));
+
+		this.account = { queue, steamId, sync };
 	}
 
 	mount(): void {
-		if (this.scope.signal.aborted || this.mounted) {
+		if (isNil(this.account) || this.scope.signal.aborted || this.mounted) {
 			return;
 		}
 
@@ -62,7 +77,7 @@ export class PlayTime {
 
 		this.scope.addDisposer(accountStore.profile.onChange(this.onPolicyChanged));
 
-		this.sync.mount();
+		this.account.sync.mount();
 	}
 
 	unMount(): void {
@@ -70,7 +85,11 @@ export class PlayTime {
 	}
 
 	private canCollect(): boolean {
-		return !this.scope.signal.aborted && canSharePlayTime(this.steamId);
+		return (
+			!this.scope.signal.aborted &&
+			!isNil(this.account) &&
+			canSharePlayTime(this.account.steamId)
+		);
 	}
 
 	private isCurrent(generation: number): boolean {
@@ -78,9 +97,10 @@ export class PlayTime {
 	}
 
 	private async handle(event: Event): Promise<void> {
+		const { account } = this;
 		const interval = parsePlayTimeInterval(event);
 
-		if (!interval || !this.canCollect()) {
+		if (isNil(account) || !interval || !this.canCollect()) {
 			return;
 		}
 
@@ -93,14 +113,14 @@ export class PlayTime {
 				return;
 			}
 
-			const added = await this.queue.add(
+			const added = await account.queue.add(
 				interval.appId,
 				interval.startedAt,
 				interval.endedAt,
 			);
 
 			if (added && this.isCurrent(generation)) {
-				this.sync.requestFlush();
+				account.sync.requestFlush();
 			}
 		} catch (error: unknown) {
 			if (this.isCurrent(generation)) {

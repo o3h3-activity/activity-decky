@@ -31,6 +31,7 @@ const mocks = vi.hoisted(() => ({
 				...args: [string, string, string, number, number, string, number]
 			) => Promise<ApiResult>
 		>(),
+	steamId: vi.fn<() => Nullable<string>>(),
 }));
 
 vi.mock(
@@ -41,6 +42,11 @@ vi.mock(
 			getPendingPlaytime: mocks.pending,
 			recordPlaytime: mocks.record,
 		}) as never,
+);
+
+vi.mock(
+	import("@steam/proxy/app"),
+	() => ({ App: { getCurrentUserIdAsU64: mocks.steamId } }) as never,
 );
 
 vi.mock(import("@api/settings"), () => ({}) as never);
@@ -155,7 +161,7 @@ function mount(
 	get = vi.fn<Games["get"]>().mockResolvedValue(discGame),
 	getRelease = vi.fn<Games["getRelease"]>().mockResolvedValue(release),
 ): { get: Games["get"]; getRelease: Games["getRelease"] } {
-	playTime = new PlayTime(STEAM_ID, { get, getRelease } as unknown as Games);
+	playTime = new PlayTime({ get, getRelease } as unknown as Games);
 	playTime.mount();
 
 	return { get, getRelease };
@@ -195,6 +201,8 @@ beforeEach(() => {
 	accountStore.authorization.set(authorization());
 	accountStore.profile.set(undefined);
 	playTimeSyncStore.isEnabled.set(true);
+	mocks.steamId.mockReset();
+	mocks.steamId.mockReturnValue(STEAM_ID);
 	mocks.enqueue.mockReset();
 	mocks.enqueue.mockImplementation(
 		async (_steamId, appId, startedAt, endedAt) => {
@@ -245,6 +253,17 @@ describe("PlayTime collection", () => {
 
 		await Promise.resolve();
 		expect(get).not.toHaveBeenCalled();
+		expect(mocks.enqueue).not.toHaveBeenCalled();
+	});
+
+	it("stays inert without a current Steam user", async () => {
+		mocks.steamId.mockReturnValue(undefined);
+		const { get } = mount();
+
+		supportedCommit();
+		await Promise.resolve();
+		expect(get).not.toHaveBeenCalled();
+		expect(mocks.pending).not.toHaveBeenCalled();
 		expect(mocks.enqueue).not.toHaveBeenCalled();
 	});
 
