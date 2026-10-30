@@ -1,7 +1,7 @@
 import type { ReactElement } from "react";
-import { PreviewAvatar } from "./preview/PreviewAvatar";
-import { PreviewComposer } from "./preview/PreviewComposer";
-import { PreviewPost } from "./preview/PreviewPost";
+import { PreviewAvatar } from "./parts/PreviewAvatar";
+import { PreviewComposer } from "./parts/PreviewComposer";
+import { PreviewPost } from "./parts/PreviewPost";
 
 export function WelcomeGamePreview(): ReactElement {
 	return (

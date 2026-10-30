@@ -1,6 +1,6 @@
 import type { ReactElement } from "react";
+import { useComposerDemo } from "../../../hooks/useComposerDemo";
 import { PreviewPost } from "./PreviewPost";
-import { useComposerDemo } from "./useComposerDemo";
 
 const COMPOSER_MESSAGES = [
 	"GG EZ. (It was not EZ. I died 47 times.)",

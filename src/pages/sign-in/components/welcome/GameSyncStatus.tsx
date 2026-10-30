@@ -7,7 +7,7 @@ import {
 	GAME_SYNC_FAILED_MESSAGE,
 	type GameSyncPhase,
 	gameSyncResultMessage,
-} from "./useGameSyncChoice";
+} from "../../hooks/useGameSyncChoice";
 
 type StartedPhase = Exclude<GameSyncPhase, { status: "choosing" }>;
 

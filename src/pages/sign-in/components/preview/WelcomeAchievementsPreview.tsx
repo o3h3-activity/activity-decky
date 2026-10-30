@@ -1,5 +1,5 @@
 import type { ReactElement } from "react";
-import { PreviewAchievement } from "./preview/PreviewAchievement";
+import { PreviewAchievement } from "./parts/PreviewAchievement";
 
 /** Badges beside the selected achievement; `gold` marks rare ones. */
 const HIGHLIGHTED_ACHIEVEMENTS = [

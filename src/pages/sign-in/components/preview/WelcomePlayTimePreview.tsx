@@ -1,8 +1,8 @@
 /* oxlint-disable react/forbid-component-props */
 import type { ReactElement } from "react";
 import { MdTimer } from "react-icons/md";
-import { PreviewAvatar } from "./preview/PreviewAvatar";
-import { PreviewSyncLink } from "./preview/PreviewSyncLink";
+import { PreviewAvatar } from "./parts/PreviewAvatar";
+import { PreviewSyncLink } from "./parts/PreviewSyncLink";
 
 /** One bar per weekday; the last is today's session. Classes are literal so Tailwind emits them. */
 const WEEK = [

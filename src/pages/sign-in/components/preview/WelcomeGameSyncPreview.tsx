@@ -1,7 +1,7 @@
 /* oxlint-disable react/forbid-component-props */
 import type { ReactElement } from "react";
 import { MdCheckCircle, MdVideogameAsset } from "react-icons/md";
-import { PreviewSyncLink } from "./preview/PreviewSyncLink";
+import { PreviewSyncLink } from "./parts/PreviewSyncLink";
 
 /** Classes are literal so Tailwind emits them. */
 const GAMES = [

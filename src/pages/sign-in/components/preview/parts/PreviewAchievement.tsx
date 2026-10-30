@@ -1,6 +1,6 @@
 import { isNil } from "es-toolkit";
 import type { ReactElement } from "react";
-import { getRareAchievementGlowClasses } from "./rareAchievementGlowClasses";
+import { getRareAchievementGlowClasses } from "../../../utils/rareAchievementGlowClasses";
 
 type PreviewAchievementProps = Readonly<{
 	gold?: boolean;

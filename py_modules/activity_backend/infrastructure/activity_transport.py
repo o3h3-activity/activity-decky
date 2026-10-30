@@ -8,7 +8,7 @@ from urllib.parse import urlencode, urlsplit, urlunsplit
 from activity_backend.infrastructure.http_client import request_json_status
 from activity_backend.shared import HttpJsonResponse
 
-EVENT_API_BASE_URL = "http://192.168.1.164:8080/api"
+EVENT_API_BASE_URL = "https://activity.o3h3.com/api"
 
 
 def _join_api_path(base_path: str, route_path: str) -> str:

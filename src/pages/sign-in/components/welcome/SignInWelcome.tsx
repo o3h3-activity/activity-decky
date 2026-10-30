@@ -17,21 +17,21 @@ import {
 	MdInfoOutline,
 	MdSync,
 } from "react-icons/md";
-import { SignInStep } from "../SignInStep";
-import { GameSyncStatus } from "./GameSyncStatus";
 import {
 	type GameSyncChoiceState,
 	useGameSyncChoice,
-} from "./useGameSyncChoice";
+} from "../../hooks/useGameSyncChoice";
 import {
 	type PlayTimeSyncChoiceState,
 	usePlayTimeSyncChoice,
-} from "./usePlayTimeSyncChoice";
-import { WelcomeAchievementsPreview } from "./WelcomeAchievementsPreview";
-import { WelcomeDesktopPreview } from "./WelcomeDesktopPreview";
-import { WelcomeGamePreview } from "./WelcomeGamePreview";
-import { WelcomeGameSyncPreview } from "./WelcomeGameSyncPreview";
-import { WelcomePlayTimePreview } from "./WelcomePlayTimePreview";
+} from "../../hooks/usePlayTimeSyncChoice";
+import { SignInStep } from "../authorization/SignInStep";
+import { WelcomeAchievementsPreview } from "../preview/WelcomeAchievementsPreview";
+import { WelcomeDesktopPreview } from "../preview/WelcomeDesktopPreview";
+import { WelcomeGamePreview } from "../preview/WelcomeGamePreview";
+import { WelcomeGameSyncPreview } from "../preview/WelcomeGameSyncPreview";
+import { WelcomePlayTimePreview } from "../preview/WelcomePlayTimePreview";
+import { GameSyncStatus } from "./GameSyncStatus";
 import { YesNoChoice } from "./YesNoChoice";
 
 const STEPS = [
