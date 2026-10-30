@@ -15,9 +15,14 @@ import {
 	MdArrowForward,
 	MdCheck,
 	MdInfoOutline,
+	MdSync,
 } from "react-icons/md";
 import { SignInStep } from "../SignInStep";
-import { PlayTimeSyncChoice } from "./PlayTimeSyncChoice";
+import { GameSyncStatus } from "./GameSyncStatus";
+import {
+	type GameSyncChoiceState,
+	useGameSyncChoice,
+} from "./useGameSyncChoice";
 import {
 	type PlayTimeSyncChoiceState,
 	usePlayTimeSyncChoice,
@@ -25,18 +30,22 @@ import {
 import { WelcomeAchievementsPreview } from "./WelcomeAchievementsPreview";
 import { WelcomeDesktopPreview } from "./WelcomeDesktopPreview";
 import { WelcomeGamePreview } from "./WelcomeGamePreview";
+import { WelcomeGameSyncPreview } from "./WelcomeGameSyncPreview";
 import { WelcomePlayTimePreview } from "./WelcomePlayTimePreview";
+import { YesNoChoice } from "./YesNoChoice";
 
 const STEPS = [
 	"Games",
 	"Achievements",
 	"Desktop Mode",
 	"Sign in",
-	"Set up",
+	"PlayTime",
+	"Sync games",
 ] as const;
 const SIGN_IN_STEP = 3;
-/** Reached only from a sign-in completed on this page. */
-const SETUP_STEP = 4;
+/** Setup steps are reached only from a sign-in completed on this page. */
+const PLAY_TIME_STEP = 4;
+const GAME_SYNC_STEP = 5;
 
 type SignInWelcomeProps = Readonly<{
 	initiallyShowSignIn: boolean;
@@ -189,22 +198,50 @@ function backLabel(step: number, closes: boolean): string {
 		return "Not now";
 	}
 
-	if (step === SETUP_STEP) {
+	if (step >= PLAY_TIME_STEP) {
 		return "Skip";
 	}
 
 	return closes ? "Close" : "Back";
 }
 
-function primaryLabel(step: number): string {
-	if (step === SETUP_STEP) {
-		return "Done";
-	}
-
-	return step === SIGN_IN_STEP - 1 ? "Sign in" : "Next";
+/** Whether Done on the last step starts syncing instead of closing. */
+function startsGameSync(gameSync: GameSyncChoiceState): boolean {
+	return gameSync.phase.status === "choosing" && gameSync.isEnabled;
 }
 
-function renderSetupSlide(playTime: PlayTimeSyncChoiceState): ReactElement {
+function primaryLabel(step: number, gameSync: GameSyncChoiceState): string {
+	if (step !== GAME_SYNC_STEP) {
+		return step === SIGN_IN_STEP - 1 ? "Sign in" : "Next";
+	}
+
+	if (gameSync.phase.status === "syncing") {
+		return "Syncing…";
+	}
+
+	return startsGameSync(gameSync) ? "Sync games" : "Done";
+}
+
+function renderPrimaryIcon(
+	step: number,
+	gameSync: GameSyncChoiceState,
+): ReactElement | undefined {
+	if (step !== GAME_SYNC_STEP) {
+		return <MdArrowForward aria-hidden="true" />;
+	}
+
+	if (gameSync.phase.status === "syncing") {
+		return undefined;
+	}
+
+	return startsGameSync(gameSync) ? (
+		<MdSync aria-hidden="true" />
+	) : (
+		<MdCheck aria-hidden="true" />
+	);
+}
+
+function renderPlayTimeSlide(playTime: PlayTimeSyncChoiceState): ReactElement {
 	return renderSlide({
 		body: (
 			<>
@@ -219,15 +256,42 @@ function renderSetupSlide(playTime: PlayTimeSyncChoiceState): ReactElement {
 			</>
 		),
 		choice: (
-			<PlayTimeSyncChoice
+			<YesNoChoice
 				disabled={playTime.isSaving}
-				isEnabled={playTime.isEnabled}
+				id="play-time-sync-question"
+				noDescription="Keep it on this Deck"
 				onChange={playTime.handleChoice}
+				question="Use PlayTime to send my play time to Activity?"
+				value={playTime.isEnabled}
+				yesDescription="Send each finished session"
 			/>
 		),
 		note: "Requires the PlayTime Decky plugin. Nothing is sent unless you choose Yes.",
 		preview: <WelcomePlayTimePreview isSharing={playTime.isEnabled} />,
 		title: "Share your play time with Activity",
+	});
+}
+
+function renderGameSyncSlide(gameSync: GameSyncChoiceState): ReactElement {
+	return renderSlide({
+		body: "Activity recognizes each game the first time you open it. It can recognize every supported game on this Deck right now instead, so their activity and RetroAchievements are ready from the start.",
+		choice:
+			gameSync.phase.status === "choosing" ? (
+				<YesNoChoice
+					disabled={false}
+					id="game-sync-question"
+					noDescription="As I open each game"
+					onChange={gameSync.handleChoice}
+					question="Sync the games on this Deck with Activity?"
+					value={gameSync.isEnabled}
+					yesDescription="Recognize them all now"
+				/>
+			) : (
+				<GameSyncStatus phase={gameSync.phase} />
+			),
+		note: "Games that aren’t recognized now still sync when you open their pages.",
+		preview: <WelcomeGameSyncPreview isSyncing={gameSync.isEnabled} />,
+		title: "Sync your games with Activity",
 	});
 }
 
@@ -238,19 +302,27 @@ export function SignInWelcome({
 	const status = useValue(() => accountStore.authorization.get()?.status);
 	const [step, setStep] = useState(initiallyShowSignIn ? SIGN_IN_STEP : 0);
 	const playTime = usePlayTimeSyncChoice();
+	const gameSync = useGameSyncChoice();
 	const isSignInStep = step === SIGN_IN_STEP;
-	const isSetupStep = step === SETUP_STEP;
+	const isSetupStep = step >= PLAY_TIME_STEP;
+	const isSyncingGames = gameSync.phase.status === "syncing";
+	// Once a sync starts there is nothing to skip; Done appears when it ends.
+	const hasStartedGameSync =
+		step === GAME_SYNC_STEP && gameSync.phase.status !== "choosing";
+	const isBusy = playTime.isSaving || isSyncingGames;
 	// Once signed in, the slides have nothing left to offer: Back becomes Close, or Skip in setup.
 	const closes =
-		step === 0 || isSetupStep || (isSignInStep && status === "signedIn");
+		step === 0 ||
+		step === GAME_SYNC_STEP ||
+		(isSignInStep && status === "signedIn");
 	const label = backLabel(step, closes);
 
 	const onSignedIn = useCallback((): void => {
-		setStep(SETUP_STEP);
+		setStep(PLAY_TIME_STEP);
 	}, []);
 
 	function onBack(): void {
-		if (playTime.isSaving) {
+		if (isBusy) {
 			return;
 		}
 
@@ -260,18 +332,28 @@ export function SignInWelcome({
 			return;
 		}
 
-		setStep(step - 1);
+		setStep(step === PLAY_TIME_STEP ? GAME_SYNC_STEP : step - 1);
 	}
 
-	async function finishSetup(): Promise<void> {
+	async function finishPlayTime(): Promise<void> {
 		if (await playTime.save()) {
-			onClose();
+			setStep(GAME_SYNC_STEP);
 		}
 	}
 
 	function onNext(): void {
-		if (isSetupStep) {
-			void finishSetup();
+		if (step === PLAY_TIME_STEP) {
+			void finishPlayTime();
+
+			return;
+		}
+
+		if (step === GAME_SYNC_STEP) {
+			if (startsGameSync(gameSync)) {
+				gameSync.start();
+			} else {
+				onClose();
+			}
 
 			return;
 		}
@@ -289,8 +371,12 @@ export function SignInWelcome({
 			return <SignInStep onClose={onClose} onSignedIn={onSignedIn} />;
 		}
 
-		if (isSetupStep) {
-			return renderSetupSlide(playTime);
+		if (step === PLAY_TIME_STEP) {
+			return renderPlayTimeSlide(playTime);
+		}
+
+		if (step === GAME_SYNC_STEP) {
+			return renderGameSyncSlide(gameSync);
 		}
 
 		return renderSlide(SLIDES[step]);
@@ -315,29 +401,31 @@ export function SignInWelcome({
 						flow-children="horizontal"
 						focusableIfEmpty
 					>
-						<DialogButton disabled={playTime.isSaving} onClick={onBack}>
-							<span className="flex items-center justify-center gap-2">
-								{!closes && <MdArrowBack aria-hidden="true" />}
+						{!hasStartedGameSync && (
+							<DialogButton disabled={isBusy} onClick={onBack}>
+								<span className="flex items-center justify-center gap-2">
+									{!closes && !isSetupStep && (
+										<MdArrowBack aria-hidden="true" />
+									)}
 
-								{label}
-							</span>
-						</DialogButton>
+									{label}
+								</span>
+							</DialogButton>
+						)}
 
 						{!isSignInStep && (
 							<DialogButtonPrimary
-								disabled={playTime.isSaving}
+								disabled={isBusy}
 								onClick={onNext}
-								// Setup starts on the Yes/No cards instead.
-								preferredFocus={!isSetupStep}
+								// Setup starts on the Yes/No cards, and a running sync on its status, instead.
+								preferredFocus={
+									!isSetupStep || (hasStartedGameSync && !isSyncingGames)
+								}
 							>
 								<span className="flex items-center justify-center gap-2">
-									{primaryLabel(step)}
+									{primaryLabel(step, gameSync)}
 
-									{isSetupStep ? (
-										<MdCheck aria-hidden="true" />
-									) : (
-										<MdArrowForward aria-hidden="true" />
-									)}
+									{renderPrimaryIcon(step, gameSync)}
 								</span>
 							</DialogButtonPrimary>
 						)}

@@ -1,13 +1,17 @@
 """Identity discovery workflows."""
 
+from __future__ import annotations
+
 import asyncio
-import logging
-from _thread import LockType
-from collections.abc import Sequence
 from concurrent.futures import Future
-from pathlib import Path
 from threading import Lock
-from typing import Protocol, cast
+from typing import TYPE_CHECKING, Protocol, cast
+
+if TYPE_CHECKING:
+    import logging
+    from _thread import LockType
+    from collections.abc import Sequence
+    from pathlib import Path
 
 from .models import (
     FileMetadataKey,
@@ -99,7 +103,7 @@ class GameIdentityBatch:
         for game in games:
             if not isinstance(game, dict):
                 continue
-            fields = cast(dict[object, object], game)
+            fields = cast("dict[object, object]", game)
             app_id = fields.get("appId")
             path = self.supported_rom_path(fields.get("path"))
             if type(app_id) is not int or path is None:
@@ -158,8 +162,8 @@ class GameIdentityBatch:
     ) -> IdentityLookup:
         """Identify one uncached disc image, joining a hash of it already running.
 
-        The frontend abandons a slow batch at its deadline but cannot cancel it, so a retry
-        must wait for the running hash rather than read the same image again.
+        The frontend abandons a slow batch at its deadline but cannot cancel it.
+        A retry must wait for the running hash rather than read the same image again.
         """
         with self._identity_lock:
             cached = self._identities.get(key)

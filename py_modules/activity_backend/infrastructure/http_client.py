@@ -3,14 +3,16 @@
 import json
 import ssl
 from email.message import Message
-from http.client import HTTPResponse
-from typing import cast
+from typing import TYPE_CHECKING, cast
 from urllib.error import HTTPError
 from urllib.parse import urlencode, urlsplit
 from urllib.request import Request, urlopen
 
 import decky
 from activity_backend.shared import HttpJsonResponse
+
+if TYPE_CHECKING:
+    from http.client import HTTPResponse
 
 REQUEST_TIMEOUT_SECONDS = 10
 MAX_RETRY_AFTER_SECONDS = 24 * 60 * 60
@@ -20,7 +22,10 @@ SYSTEM_CA_BUNDLE = "/etc/ssl/certs/ca-certificates.crt"
 
 
 def _default_ssl_context() -> ssl.SSLContext:
-    """Build the verifying TLS context from the host CA bundle; Decky's bundled Python lacks a usable CA store."""
+    """Build a verifying TLS context from the host CA bundle.
+
+    Decky's bundled Python lacks a usable CA store.
+    """
     try:
         return ssl.create_default_context(cafile=SYSTEM_CA_BUNDLE)
     except OSError as error:
@@ -54,7 +59,7 @@ def _decode_json(raw: bytes) -> object:
     if not raw:
         return None
     try:
-        return cast(object, json.loads(raw.decode("utf-8")))
+        return cast("object", json.loads(raw.decode("utf-8")))
     except ValueError:
         return None
 
@@ -65,8 +70,10 @@ def _request_id(headers: Message | None) -> str:
     return value if isinstance(value, str) else "-"
 
 
-def _body_excerpt(raw: bytes) -> str:
-    """Return a bounded, printable response body for diagnostics."""
+def _body_excerpt(raw: bytes, path: str) -> str:
+    """Bound diagnostics without exposing credential-bearing response bodies."""
+    if path.endswith(("/auth/device/token", "/retroachievements/credentials")):
+        return "<redacted credentials>"
     text = raw.decode("utf-8", errors="replace").strip()
     if not text:
         return "<empty body>"
@@ -83,7 +90,7 @@ def request_json_status(
     form: dict[str, str] | None = None,
     bearer_token: str | None = None,
 ) -> HttpJsonResponse | None:
-    """Perform a blocking HTTP request and return its status, JSON body, and retry metadata."""
+    """Return an HTTP response's status, JSON body, and retry metadata."""
     parts = urlsplit(url)
     headers = {"Accept": "application/json", "User-Agent": USER_AGENT}
     data: bytes | None = None
@@ -100,7 +107,7 @@ def request_json_status(
         # Only configured HTTPS origins reach this transport; S310 is a scheme audit.
         request = Request(url, data=data, headers=headers, method=method)  # noqa: S310
         with cast(
-            HTTPResponse,
+            "HTTPResponse",
             urlopen(  # noqa: S310 -- configured HTTPS origins, verified TLS context
                 request, timeout=REQUEST_TIMEOUT_SECONDS, context=DEFAULT_SSL_CONTEXT
             ),
@@ -114,7 +121,7 @@ def request_json_status(
                     parts.netloc,
                     parts.path,
                     response.status,
-                    _body_excerpt(raw),
+                    _body_excerpt(raw, parts.path),
                 )
             return HttpJsonResponse(
                 response.status, payload, _retry_after_seconds(response.headers)
@@ -133,7 +140,7 @@ def request_json_status(
             error.code,
             error.reason,
             _request_id(error.headers),
-            _body_excerpt(raw),
+            _body_excerpt(raw, parts.path),
         )
         return HttpJsonResponse(
             error.code, _decode_json(raw), _retry_after_seconds(error.headers)

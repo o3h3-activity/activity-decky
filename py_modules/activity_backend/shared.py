@@ -17,9 +17,13 @@ class HttpJsonResponse(NamedTuple):
 class Settings(Protocol):
     """Typed access to persistent values; modules own their keys."""
 
-    def get(self, key: str, kind: type[T]) -> T | None: ...
+    def get(self, key: str, kind: type[T]) -> T | None:
+        """Return the stored value when it matches the requested type."""
+        ...
 
-    def update(self, changes: Mapping[str, object]) -> None: ...
+    def update(self, changes: Mapping[str, object]) -> None:
+        """Persist the supplied settings without replacing unrelated values."""
+        ...
 
 
 class ActivityTransport(Protocol):
@@ -33,4 +37,6 @@ class ActivityTransport(Protocol):
         query: Sequence[tuple[str, str]] = (),
         body: object = None,
         token: str | None = None,
-    ) -> HttpJsonResponse | None: ...
+    ) -> HttpJsonResponse | None:
+        """Send a request and return its response, or None on transport failure."""
+        ...

@@ -1,11 +1,11 @@
 /** Mirrors `ApiErrorCode` in py_modules/activity_backend/modules/activity/results.py. */
 export type ApiErrorCode =
 	| "accountMismatch"
+	| "deliveryUnknown"
 	| "httpError"
 	| "invalidRequest"
 	| "invalidResponse"
 	| "notSignedIn"
-	| "refused"
 	| "sharingDisabled"
 	| "unauthorized"
 	| "unreachable";
@@ -16,8 +16,10 @@ export type ApiFailure = Readonly<{
 	status: number;
 }>;
 
-/** Activity API outcome; `data` is unvalidated JSON for the caller's parser; `status` is 0 without an HTTP response. */
-export type ApiResult = ApiFailure | Readonly<{ data: unknown; ok: true }>;
+/** Activity API outcome; `data` is a schema-typed but unvalidated success payload; `status` is 0 without an HTTP response. */
+export type ApiResult<Data = unknown> =
+	| ApiFailure
+	| Readonly<{ data: Data; ok: true }>;
 
 export function apiFailure(error: ApiErrorCode, status = 0): ApiFailure {
 	return { error, ok: false, status };

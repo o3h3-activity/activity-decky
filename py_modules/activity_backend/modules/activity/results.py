@@ -10,7 +10,7 @@ ApiErrorCode = Literal[
     "invalidRequest",
     "notSignedIn",
     "unreachable",
-    "refused",
+    "deliveryUnknown",
     "sharingDisabled",
     "unauthorized",
     "httpError",

@@ -1,4 +1,11 @@
 import { authorizationGate } from "./account";
+import { RPC_TIMEOUT_MS } from "./rpc/transport";
+
+/** Most identities sent per `recognizeGameBatch` call. */
+export const RECOGNITION_BATCH_SIZE = 256;
+
+/** The backend's HTTP timeout; it asks Activity about each uncached identity in turn. */
+const BACKEND_REQUEST_TIMEOUT_MS = 10_000;
 
 /**
  * Catalog identity of one disc image. A 404 produces null IDs (cached by the backend for 24 hours).
@@ -19,4 +26,14 @@ export type GameRecognitionResult = {
 export const recognizeGames = authorizationGate.guard(
 	"recognize_games",
 	() => [],
+);
+
+/**
+ * `recognizeGames` for up to `RECOGNITION_BATCH_SIZE` identities: a full batch of uncached identities
+ * can legitimately take one backend request timeout each, far beyond the default deadline.
+ */
+export const recognizeGameBatch = authorizationGate.guard(
+	"recognize_games",
+	() => [],
+	RECOGNITION_BATCH_SIZE * BACKEND_REQUEST_TIMEOUT_MS + RPC_TIMEOUT_MS,
 );

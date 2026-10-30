@@ -19,11 +19,15 @@ from ..models import (
     DeviceStartResult,
     DeviceStartSuccess,
     RetroAchievementsCredentials,
+    RetroAchievementsCredentialSyncFailure,
+    RetroAchievementsCredentialSyncResult,
+    RetroAchievementsCredentialSyncSuccess,
 )
 
 DEVICE_START_PATH = "/api/v1/auth/device"
 DEVICE_TOKEN_PATH = "/api/v1/auth/device/token"  # noqa: S105 -- endpoint, not a secret
 CURRENT_USER_PATH = "/api/v1/me"
+RETRO_ACHIEVEMENTS_CREDENTIALS_PATH = "/api/v1/me/retroachievements/credentials"
 
 
 class ActivityDeviceAuthorizationEndpoint:
@@ -50,6 +54,16 @@ class ActivityDeviceAuthorizationEndpoint:
             await self._transport.send("GET", CURRENT_USER_PATH, token=token)
         )
 
+    async def sync_retro_achievements_credentials(
+        self, token: str
+    ) -> RetroAchievementsCredentialSyncResult:
+        """Load the current credential bundle for a permitted bearer token."""
+        return self._decode_retro_achievements_credentials_sync(
+            await self._transport.send(
+                "GET", RETRO_ACHIEVEMENTS_CREDENTIALS_PATH, token=token
+            )
+        )
+
     @staticmethod
     def _decode_start(response: HttpJsonResponse | None) -> DeviceStartResult:
         """Classify and validate a device authorization response."""
@@ -73,7 +87,7 @@ class ActivityDeviceAuthorizationEndpoint:
         """Decode the required wire fields of a device authorization grant."""
         if not isinstance(body, dict):
             return None
-        values = cast(dict[object, object], body)
+        values = cast("dict[object, object]", body)
         device_code = values.get("deviceCode")
         user_code = values.get("userCode")
         verification_uri = values.get("verificationUri")
@@ -140,7 +154,7 @@ class ActivityDeviceAuthorizationEndpoint:
         """Decode a successful device-token response into an authorization outcome."""
         if not isinstance(response.body, dict):
             return DevicePollOutcome("invalid", http_status=response.status)
-        values = cast(dict[object, object], response.body)
+        values = cast("dict[object, object]", response.body)
         status = values.get("status")
         if not isinstance(status, str):
             return DevicePollOutcome("invalid", http_status=response.status)
@@ -162,10 +176,10 @@ class ActivityDeviceAuthorizationEndpoint:
     def _decode_approved_token(
         values: dict[object, object],
     ) -> ApprovedToken | None:
-        """Decode the required wire fields of an approved device token."""
         token = values.get("accessToken")
         token_type = values.get("tokenType")
         expires_at = values.get("expiresAt")
+        credential_sync = values.get("retroAchievementsCredentialSync")
         serialized_retro_achievements = values.get("retroAchievements")
         retro_achievements = (
             ActivityDeviceAuthorizationEndpoint._decode_retro_achievements_credentials(
@@ -178,12 +192,13 @@ class ActivityDeviceAuthorizationEndpoint:
             and isinstance(token_type, str)
             and token_type.lower() == "bearer"
             and is_valid_expiry(expires_at)
+            and type(credential_sync) is bool
             and (
                 serialized_retro_achievements is None or retro_achievements is not None
             )
         ):
             return None
-        return ApprovedToken(token, expires_at, retro_achievements)
+        return ApprovedToken(token, expires_at, credential_sync, retro_achievements)
 
     @staticmethod
     def _decode_retro_achievements_credentials(
@@ -192,7 +207,7 @@ class ActivityDeviceAuthorizationEndpoint:
         """Decode optional RetroAchievements credentials from an approved response."""
         if not isinstance(value, dict):
             return None
-        values = cast(dict[object, object], value)
+        values = cast("dict[object, object]", value)
         username = values.get("userName")
         api_key = values.get("apiKey")
         if not (
@@ -205,6 +220,46 @@ class ActivityDeviceAuthorizationEndpoint:
         return RetroAchievementsCredentials(username, api_key)
 
     @staticmethod
+    def _decode_retro_achievements_credentials_sync(
+        response: HttpJsonResponse | None,
+    ) -> RetroAchievementsCredentialSyncResult:
+        """Classify and validate the credential-sync response."""
+        if response is None:
+            return RetroAchievementsCredentialSyncFailure("unavailable")
+        if response.status == 401:
+            return RetroAchievementsCredentialSyncFailure(
+                "rejected", http_status=response.status
+            )
+        if response.status == 403:
+            return RetroAchievementsCredentialSyncFailure(
+                "forbidden", http_status=response.status
+            )
+        if response.status != 200:
+            return RetroAchievementsCredentialSyncFailure(
+                "unavailable", http_status=response.status
+            )
+        if not isinstance(response.body, dict):
+            return RetroAchievementsCredentialSyncFailure(
+                "invalid", http_status=response.status
+            )
+        values = cast("dict[object, object]", response.body)
+        if "retroAchievements" not in values:
+            return RetroAchievementsCredentialSyncFailure(
+                "invalid", http_status=response.status
+            )
+        serialized = values["retroAchievements"]
+        credentials = (
+            ActivityDeviceAuthorizationEndpoint._decode_retro_achievements_credentials(
+                serialized
+            )
+        )
+        if serialized is not None and credentials is None:
+            return RetroAchievementsCredentialSyncFailure(
+                "invalid", http_status=response.status
+            )
+        return RetroAchievementsCredentialSyncSuccess(credentials, response.status)
+
+    @staticmethod
     def _decode_user(response: HttpJsonResponse | None) -> CurrentUserResult:
         """Classify and validate one current-user response."""
         if response is None:
@@ -215,7 +270,7 @@ class ActivityDeviceAuthorizationEndpoint:
             return CurrentUserFailure("unavailable", http_status=response.status)
         if not isinstance(response.body, dict):
             return CurrentUserFailure("invalid", http_status=response.status)
-        values = cast(dict[object, object], response.body)
+        values = cast("dict[object, object]", response.body)
         nickname = values.get("nickname")
         if not isinstance(nickname, str):
             return CurrentUserFailure("invalid", http_status=response.status)

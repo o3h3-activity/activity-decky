@@ -1,9 +1,18 @@
 /* oxlint-disable vitest/prefer-strict-boolean-matchers -- Conflicts with the required prefer-to-be-truthy/falsy rules. */
-import type { GameRecognitionResult } from "@api/catalog";
+import {
+	type GameRecognitionResult,
+	RECOGNITION_BATCH_SIZE,
+} from "@api/catalog";
 import type { GameIdentityResult } from "@api/discIdentity";
+import type { GameSyncListener } from "@stores/gameSync";
+import { sum } from "es-toolkit";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
+	batches:
+		vi.fn<
+			(identities: GameIdentityResult[]) => Promise<GameRecognitionResult[]>
+		>(),
 	recognitions:
 		vi.fn<
 			(identities: GameIdentityResult[]) => Promise<GameRecognitionResult[]>
@@ -12,7 +21,12 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock(
 	import("@api/catalog"),
-	() => ({ recognizeGames: mocks.recognitions }) as never,
+	() =>
+		({
+			RECOGNITION_BATCH_SIZE: 256,
+			recognizeGameBatch: mocks.batches,
+			recognizeGames: mocks.recognitions,
+		}) as never,
 );
 
 // Games receives a FakeIdentity; the real Identity module's RPC import only has to resolve.
@@ -95,12 +109,23 @@ function answerForIco(
 		);
 }
 
+async function answerAll(
+	identities: GameIdentityResult[],
+): Promise<GameRecognitionResult[]> {
+	return identities.map(({ game_identity_md5 }) => ({
+		gameIdentityMd5: game_identity_md5,
+		...ICO_RELEASE,
+	}));
+}
+
 let identity: FakeIdentity;
 
 beforeEach(() => {
 	identity = new FakeIdentity();
 	mocks.recognitions.mockReset();
 	mocks.recognitions.mockResolvedValue([]);
+	mocks.batches.mockReset();
+	mocks.batches.mockResolvedValue([]);
 });
 
 describe("Games.isSupported", () => {
@@ -425,5 +450,235 @@ describe("Games.getRelease", () => {
 		).resolves.toBeUndefined();
 
 		expect(mocks.recognitions).not.toHaveBeenCalled();
+	});
+});
+
+describe("Games.sync", () => {
+	const BATCH_LENGTHS = [RECOGNITION_BATCH_SIZE, RECOGNITION_BATCH_SIZE, 1];
+	const LIBRARY_SIZE = sum(BATCH_LENGTHS);
+	const appIds = Array.from({ length: LIBRARY_SIZE }, (_, index) => index + 1);
+
+	/** Every shortcut launches an identifiable disc. */
+	function library(): FakeIdentity {
+		const large = new FakeIdentity();
+
+		large.shortcuts = appIds;
+		large.locate.mockImplementation(async (appId) => `/roms/${appId}.iso`);
+		large.identify.mockImplementation(async (games) =>
+			games.map((game) =>
+				game.identifiedAs(
+					DiscIdentity.fromResult({
+						appId: game.appId,
+						game_identity_md5: `${game.appId}`.padStart(ICO_MD5.length, "0"),
+						platform: "ps2",
+						rcheevos_id: 21,
+						serial: `SLUS-${game.appId}`,
+					}),
+				),
+			),
+		);
+
+		return large;
+	}
+
+	it("sends every identified game in batches of at most 256, reporting each, then serves releases without asking again", async () => {
+		mocks.batches.mockImplementation(answerAll);
+		const games = new Games(library());
+		const onProgress = vi.fn<GameSyncListener>();
+		const final = {
+			answered: LIBRARY_SIZE,
+			batch: BATCH_LENGTHS.length,
+			batches: BATCH_LENGTHS.length,
+			sent: LIBRARY_SIZE,
+			total: LIBRARY_SIZE,
+		};
+
+		await expect(games.sync(onProgress)).resolves.toEqual(final);
+
+		expect(
+			onProgress.mock.calls.map(([{ answered, batch, sent }]) => ({
+				answered,
+				batch,
+				sent,
+			})),
+		).toEqual([
+			{ answered: 0, batch: 0, sent: 0 },
+			{
+				answered: RECOGNITION_BATCH_SIZE,
+				batch: 1,
+				sent: RECOGNITION_BATCH_SIZE,
+			},
+			{
+				answered: RECOGNITION_BATCH_SIZE + RECOGNITION_BATCH_SIZE,
+				batch: 2,
+				sent: RECOGNITION_BATCH_SIZE + RECOGNITION_BATCH_SIZE,
+			},
+			{ answered: LIBRARY_SIZE, batch: 3, sent: LIBRARY_SIZE },
+		]);
+
+		expect(onProgress).toHaveBeenLastCalledWith(final);
+
+		expect(mocks.batches.mock.calls.map(([batch]) => batch.length)).toEqual(
+			BATCH_LENGTHS,
+		);
+
+		expect(
+			mocks.batches.mock.calls.flatMap(([batch]) =>
+				batch.map(({ appId }) => appId),
+			),
+		).toEqual(appIds);
+
+		await expect(games.getRelease(LIBRARY_SIZE)).resolves.toMatchObject({
+			revisionId: "revision-ico-us",
+		});
+
+		expect(mocks.recognitions).not.toHaveBeenCalled();
+	});
+
+	it("skips games without a disc identity and counts games Activity did not answer", async () => {
+		mocks.batches.mockImplementation(answerForIco(ICO_RELEASE));
+
+		await expect(new Games(identity).sync()).resolves.toMatchObject({
+			answered: 1,
+			total: 1,
+		});
+
+		mocks.batches.mockResolvedValue([]);
+
+		await expect(new Games(identity).sync()).resolves.toMatchObject({
+			answered: 0,
+			total: 1,
+		});
+
+		expect(
+			mocks.batches.mock.calls.map(([batch]) =>
+				batch.map(({ appId }) => appId),
+			),
+		).toEqual([[ICO_ID], [ICO_ID]]);
+	});
+
+	it("rejects failed identification instead of reporting an empty library, and retries it next sync", async () => {
+		identity.identify.mockRejectedValueOnce(new Error("identity unavailable"));
+		mocks.batches.mockImplementation(answerAll);
+		const games = new Games(identity);
+
+		await expect(games.sync()).rejects.toBeInstanceOf(Error);
+
+		await expect(games.sync()).resolves.toMatchObject({
+			answered: 1,
+			total: 1,
+		});
+	});
+
+	it("keeps answers and progress from discovered games when another shortcut fails", async () => {
+		const partial = library();
+
+		partial.shortcuts = [1, 2];
+		partial.locate.mockRejectedValueOnce(new Error("Steam details unavailable"));
+		mocks.batches.mockImplementation(answerAll);
+		const games = new Games(partial);
+		const onProgress = vi.fn<GameSyncListener>();
+
+		await expect(games.sync(onProgress)).rejects.toBeInstanceOf(Error);
+
+		expect(onProgress).toHaveBeenLastCalledWith({
+			answered: 1,
+			batch: 1,
+			batches: 1,
+			sent: 1,
+			total: 1,
+		});
+
+		await expect(games.getRelease(2)).resolves.toMatchObject({
+			revisionId: "revision-ico-us",
+		});
+
+		expect(mocks.recognitions).not.toHaveBeenCalled();
+	});
+
+	it("finishes normally when every shortcut is unsupported", async () => {
+		identity.shortcuts = [FINAL_FANTASY_ID, BROWSER_ID];
+
+		await expect(new Games(identity).sync()).resolves.toEqual({
+			answered: 0,
+			batch: 0,
+			batches: 0,
+			sent: 0,
+			total: 0,
+		});
+	});
+
+	it("rejects when a batch fails, keeping the answers of earlier batches", async () => {
+		mocks.batches
+			.mockImplementationOnce(answerAll)
+			.mockRejectedValueOnce(new Error("catalog unreachable"));
+
+		const games = new Games(library());
+
+		await expect(games.sync()).rejects.toThrow("catalog unreachable");
+
+		expect(mocks.batches).toHaveBeenCalledTimes(2);
+
+		await expect(games.getRelease(1)).resolves.toMatchObject({
+			revisionId: "revision-ico-us",
+		});
+
+		expect(mocks.recognitions).not.toHaveBeenCalled();
+	});
+
+	it("shares one sync between overlapping requests, telling a late caller the latest progress first", async () => {
+		const { promise, resolve } =
+			Promise.withResolvers<GameRecognitionResult[]>();
+
+		mocks.batches.mockReturnValueOnce(promise);
+		const games = new Games(library());
+		const first = games.sync();
+
+		await vi.waitFor(() => {
+			expect(mocks.batches).toHaveBeenCalledOnce();
+		});
+
+		const late = vi.fn<GameSyncListener>();
+		const second = games.sync(late);
+
+		expect(late).toHaveBeenCalledExactlyOnceWith(
+			expect.objectContaining({ batch: 0, sent: 0, total: LIBRARY_SIZE }),
+		);
+
+		resolve([]);
+		const [firstResult, secondResult] = await Promise.all([first, second]);
+
+		expect(firstResult).toBe(secondResult);
+		expect(late).toHaveBeenLastCalledWith(firstResult);
+		expect(mocks.batches).toHaveBeenCalledTimes(BATCH_LENGTHS.length);
+	});
+
+	it("stops sending batches once the session ends", async () => {
+		const { promise, resolve } =
+			Promise.withResolvers<GameRecognitionResult[]>();
+
+		mocks.batches.mockReturnValueOnce(promise);
+		const games = new Games(library());
+		const sync = games.sync();
+
+		await vi.waitFor(() => {
+			expect(mocks.batches).toHaveBeenCalledOnce();
+		});
+
+		games.unMount();
+		resolve([]);
+
+		await expect(sync).rejects.toMatchObject({ name: "AbortError" });
+		expect(mocks.batches).toHaveBeenCalledOnce();
+	});
+
+	it("rejects when Steam's shortcut list is unavailable", async () => {
+		identity.shortcuts = undefined;
+
+		await expect(new Games(identity).sync()).rejects.toThrow(
+			"shortcut list is unavailable",
+		);
+
+		expect(mocks.batches).not.toHaveBeenCalled();
 	});
 });

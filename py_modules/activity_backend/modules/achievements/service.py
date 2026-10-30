@@ -1,17 +1,22 @@
 """RetroAchievements progress workflows."""
 
-import asyncio
-import logging
-from _thread import LockType
-from pathlib import Path
-from threading import Lock
-from typing import TypeAlias
+from __future__ import annotations
 
-from .ports import (
-    RetroAchievementsApi,
-    RetroAchievementsSession,
-    RomIdentityLookup,
-)
+import asyncio
+from threading import Lock
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import logging
+    from _thread import LockType
+    from pathlib import Path
+    from typing import TypeAlias
+
+    from .ports import (
+        RetroAchievementsApi,
+        RetroAchievementsSession,
+        RomIdentityLookup,
+    )
 
 RA_NO_GAME_ID = 0
 FileMetadataKey: TypeAlias = tuple[str, int, int]
@@ -36,7 +41,8 @@ class RetroAchievementsClient:
         self._game_ids_lock: LockType = Lock()
 
     async def get_progress(self, rom_path: object) -> object:
-        """Fetch the current session user's RetroAchievements progress for one ROM."""
+        """Refresh and use the current session's RetroAchievements credentials."""
+        _ = await self._session.sync_retro_achievements_credentials()
         credentials = self._session.retro_achievements_credentials()
         if credentials is None:
             self._logger.debug("RetroAchievements credentials unavailable")

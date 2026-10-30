@@ -109,7 +109,7 @@ def valid_identity(value: object) -> GameIdentity | None:
     """Return a valid native identity, excluding malformed RPC input."""
     if not isinstance(value, dict):
         return None
-    candidate = cast(dict[object, object], value)
+    candidate = cast("dict[object, object]", value)
     game_identity_md5 = candidate.get("game_identity_md5")
     platform = candidate.get("platform")
     serial = candidate.get("serial")
@@ -122,7 +122,7 @@ def valid_identity(value: object) -> GameIdentity | None:
         return None
     return {
         "game_identity_md5": game_identity_md5,
-        "platform": cast(Literal["ps1", "ps2", "psp"], platform),
+        "platform": cast("Literal['ps1', 'ps2', 'psp']", platform),
         "serial": serial,
     }
 

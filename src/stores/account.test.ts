@@ -6,6 +6,8 @@ import type { accountStore, refreshActivityAccount } from "./account";
 const boundary = vi.hoisted(() => ({
 	getDeviceAuthorization: vi.fn<() => Promise<unknown>>(),
 	authorizationListener: undefined as unknown,
+	syncRetroAchievementsCredentials:
+		vi.fn<() => Promise<DeviceAuthorizationState>>(),
 }));
 
 vi.mock(
@@ -29,6 +31,8 @@ vi.mock(
 			signOutActivity: vi.fn<() => Promise<DeviceAuthorizationState>>(),
 			startDeviceAuthorization:
 				vi.fn<() => Promise<DeviceAuthorizationState>>(),
+			syncRetroAchievementsCredentials:
+				boundary.syncRetroAchievementsCredentials,
 		}) as never,
 );
 
@@ -61,6 +65,7 @@ const SIGNED_OUT: DeviceAuthorizationState = {
 	codeExpiresAt: 0,
 	message: "",
 	retroAchievementsLinked: false,
+	retroAchievementsCredentialSync: false,
 	status: "signedOut",
 	tokenExpiresAt: "",
 	userCode: "",
@@ -72,6 +77,13 @@ const PENDING: DeviceAuthorizationState = {
 	...SIGNED_OUT,
 	codeExpiresAt: 2000,
 	status: "pending",
+};
+
+const SIGNED_IN: DeviceAuthorizationState = {
+	...SIGNED_OUT,
+	retroAchievementsCredentialSync: true,
+	status: "signedIn",
+	tokenExpiresAt: "2999-01-01T00:00:00Z",
 };
 
 let activeScope: LifetimeScope | undefined;
@@ -99,6 +111,7 @@ beforeEach(() => {
 	vi.clearAllMocks();
 	boundary.getDeviceAuthorization.mockReset();
 	boundary.authorizationListener = undefined;
+	boundary.syncRetroAchievementsCredentials.mockReset();
 });
 
 afterEach(() => {
@@ -146,5 +159,48 @@ describe("refreshActivityAccount", () => {
 		staleRead.reject(new Error("stale read failed"));
 		await expect(refresh).resolves.toEqual(PENDING);
 		expect(account.accountStore.loadError.peek()).toBeUndefined();
+	});
+
+	it("refreshes credentials once on sign-in without reviving a newer signed-out snapshot", async () => {
+		const refreshed = Promise.withResolvers<DeviceAuthorizationState>();
+
+		boundary.syncRetroAchievementsCredentials.mockReturnValue(refreshed.promise);
+		const account = await mountAccount(Promise.resolve(SIGNED_IN));
+
+		expect(boundary.syncRetroAchievementsCredentials).toHaveBeenCalledOnce();
+
+		const listener = boundary.authorizationListener as
+			| ((state: DeviceAuthorizationState) => void)
+			| undefined;
+
+		listener?.(SIGNED_OUT);
+		refreshed.resolve({ ...SIGNED_IN, retroAchievementsLinked: true });
+		await refreshed.promise;
+		await Promise.resolve();
+
+		expect(account.accountStore.authorization.peek()).toEqual(SIGNED_OUT);
+		expect(boundary.syncRetroAchievementsCredentials).toHaveBeenCalledOnce();
+	});
+
+	it("refreshes credentials once for each transition into signed-in", async () => {
+		boundary.syncRetroAchievementsCredentials.mockResolvedValue(SIGNED_IN);
+		await mountAccount(Promise.resolve(SIGNED_OUT));
+
+		const listener = boundary.authorizationListener as
+			| ((state: DeviceAuthorizationState) => void)
+			| undefined;
+
+		listener?.(SIGNED_IN);
+		await Promise.resolve();
+		expect(boundary.syncRetroAchievementsCredentials).toHaveBeenCalledOnce();
+
+		listener?.(SIGNED_IN);
+		await Promise.resolve();
+		expect(boundary.syncRetroAchievementsCredentials).toHaveBeenCalledOnce();
+
+		listener?.(SIGNED_OUT);
+		listener?.(SIGNED_IN);
+		await Promise.resolve();
+		expect(boundary.syncRetroAchievementsCredentials).toHaveBeenCalledTimes(2);
 	});
 });

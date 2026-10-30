@@ -22,7 +22,7 @@ DEBUG_ENABLED_SETTING = "isDebugEnabled"
 
 
 def _apply_debug_logging(enabled: bool | None) -> None:
-    """Emit backend DEBUG logs only while the debug preference is on; INFO and above always log."""
+    """Emit DEBUG logs only while enabled; always emit INFO and higher levels."""
     decky.logger.setLevel(logging.DEBUG if enabled else logging.INFO)
 
 
@@ -50,7 +50,7 @@ class Plugin:
         decky.logger.info("Set %s=%s", DEBUG_ENABLED_SETTING, enabled)
 
     async def get_play_time_sync_enabled(self) -> bool:
-        """Return whether PlayTime intervals may be sent to Activity; off until the user opts in."""
+        """Return whether PlayTime sharing is enabled; off until the user opts in."""
         return is_playtime_sharing_enabled(self.backend.settings)
 
     async def set_play_time_sync_enabled(self, enabled: bool) -> None:
@@ -87,6 +87,10 @@ class Plugin:
         """Load the current user for the saved Activity access token."""
         return await self.backend.authorization.get_user()
 
+    async def sync_retro_achievements_credentials(self) -> DeviceAuthorizationState:
+        """Refresh permitted RetroAchievements credentials without exposing them."""
+        return await self.backend.authorization.sync_retro_achievements_credentials()
+
     async def game_anatomy_handshake(self) -> bool:
         """Report whether the bundled game-anatomy extension is available."""
         return await self.backend.identities.handshake()
@@ -110,6 +114,16 @@ class Plugin:
         return await self.backend.activity.get_friends_gameplay(
             game_id, release_id, release_revision_id
         )
+
+    async def get_profile_games(
+        self, after: str | None = None, limit: int | None = None
+    ) -> ApiResult:
+        """List the signed-in Activity profile's games, preserving pagination data."""
+        return await self.backend.activity.get_profile_games(after, limit)
+
+    async def get_recent_playtime(self) -> ApiResult:
+        """List the signed-in Activity profile's recent playtime."""
+        return await self.backend.activity.get_recent_playtime()
 
     async def post_comment(
         self, game_id: str, release_id: str, release_revision_id: str, body: str
@@ -135,13 +149,13 @@ class Plugin:
         self, steam_id: object, app_id: object, started_at: object, ended_at: object
     ) -> bool:
         """Persist one committed PlayTime interval without calling Activity."""
-        return await self.backend.activity.enqueue_playtime(
+        return await self.backend.playtime.enqueue_playtime(
             steam_id, app_id, started_at, ended_at
         )
 
     async def get_pending_playtime(self, steam_id: object) -> list[PendingPlaytime]:
         """Return unresolved PlayTime intervals owned by one Steam account."""
-        return await self.backend.activity.get_pending_playtime(steam_id)
+        return await self.backend.playtime.get_pending_playtime(steam_id)
 
     async def record_playtime(
         self,
@@ -154,7 +168,7 @@ class Plugin:
         app_id: object,
     ) -> ApiResult:
         """Upload one resolved, durably queued PlayTime interval."""
-        return await self.backend.activity.record_playtime(
+        return await self.backend.playtime.record_playtime(
             game_id,
             release_id,
             release_revision_id,

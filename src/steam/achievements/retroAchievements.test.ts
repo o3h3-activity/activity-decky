@@ -47,6 +47,7 @@ const SIGNED_IN: DeviceAuthorizationState = {
 	codeExpiresAt: 0,
 	message: "",
 	retroAchievementsLinked: true,
+	retroAchievementsCredentialSync: true,
 	status: "signedIn",
 	tokenExpiresAt: "2999-01-01T00:00:00Z",
 	userCode: "",

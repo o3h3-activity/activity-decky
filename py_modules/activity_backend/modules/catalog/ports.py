@@ -2,15 +2,16 @@
 
 from __future__ import annotations
 
-from typing import Protocol
+from typing import TYPE_CHECKING, Protocol
 
 from activity_backend.modules.authorization.api import Session
 
-from .recognition import (
-    GameIdentity,
-    RecognitionCacheEntry,
-    RecognitionEndpointResult,
-)
+if TYPE_CHECKING:
+    from .recognition import (
+        GameIdentity,
+        RecognitionCacheEntry,
+        RecognitionEndpointResult,
+    )
 
 
 class RecognitionCache(Protocol):

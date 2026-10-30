@@ -21,4 +21,4 @@ class GameAnatomyNativeOperations:
         if plugin_bin not in sys.path:
             sys.path.insert(0, plugin_bin)
         module = importlib.import_module("game_anatomy")
-        return cast(GameAnatomy, cast(object, module))
+        return cast("GameAnatomy", cast("object", module))

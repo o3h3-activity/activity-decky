@@ -10,6 +10,7 @@ from backend_support import BackendTestCase, decky, make_authorization
 from activity_backend.infrastructure import activity_transport as activity_api
 from activity_backend.modules.authorization.adapters import device_endpoint, token_store
 from activity_backend.modules.authorization.api import RetroAchievementsCredentials
+from activity_backend.modules.authorization.models import ApprovedToken
 from activity_backend.shared import HttpJsonResponse
 
 
@@ -63,6 +64,7 @@ class DeviceAuthorizationTests(BackendTestCase, unittest.IsolatedAsyncioTestCase
             "accessToken": "pat_" + "0" * 64,
             "tokenType": "Bearer",
             "expiresAt": "2998-10-27T00:00:00+00:00",
+            "retroAchievementsCredentialSync": False,
         }
         with patch.object(
             activity_api,
@@ -84,6 +86,7 @@ class DeviceAuthorizationTests(BackendTestCase, unittest.IsolatedAsyncioTestCase
             "accessToken": "pat_" + "0" * 64,
             "tokenType": "Bearer",
             "expiresAt": "2998-10-27T00:00:00+00:00",
+            "retroAchievementsCredentialSync": False,
         }
         with patch.object(
             activity_api,
@@ -105,6 +108,7 @@ class DeviceAuthorizationTests(BackendTestCase, unittest.IsolatedAsyncioTestCase
             "accessToken": "pat_" + "0" * 64,
             "tokenType": "Bearer",
             "expiresAt": "2998-10-27T00:00:00+00:00",
+            "retroAchievementsCredentialSync": False,
         }
         with patch.object(
             activity_api,
@@ -134,6 +138,7 @@ class DeviceAuthorizationTests(BackendTestCase, unittest.IsolatedAsyncioTestCase
             "accessToken": "pat_" + "0" * 64,
             "tokenType": "Bearer",
             "expiresAt": "2998-10-27T00:00:00+00:00",
+            "retroAchievementsCredentialSync": False,
         }
         with patch.object(
             activity_api,
@@ -183,6 +188,7 @@ class DeviceAuthorizationTests(BackendTestCase, unittest.IsolatedAsyncioTestCase
             "accessToken": "pat_" + "0" * 64,
             "tokenType": "Bearer",
             "expiresAt": "2998-10-27T00:00:00+00:00",
+            "retroAchievementsCredentialSync": False,
         }
         with patch.object(
             activity_api,
@@ -219,6 +225,7 @@ class DeviceAuthorizationTests(BackendTestCase, unittest.IsolatedAsyncioTestCase
             "accessToken": "pat_" + "0" * 64,
             "tokenType": "Bearer",
             "expiresAt": "2998-10-27T00:00:00+00:00",
+            "retroAchievementsCredentialSync": False,
         }
         with patch.object(
             activity_api,
@@ -253,6 +260,7 @@ class DeviceAuthorizationTests(BackendTestCase, unittest.IsolatedAsyncioTestCase
             "accessToken": "pat_" + "0" * 64,
             "tokenType": "Bearer",
             "expiresAt": "2998-10-27T00:00:00+00:00",
+            "retroAchievementsCredentialSync": False,
         }
         with patch.object(
             activity_api,
@@ -290,20 +298,15 @@ class DeviceAuthorizationTests(BackendTestCase, unittest.IsolatedAsyncioTestCase
     async def test_approval_persists_retro_achievements_credentials_with_session(
         self,
     ) -> None:
-        """Store approved RetroAchievements credentials only with their bearer session."""
+        """Store approved credentials with their bearer session."""
         approved = {
             "status": "approved",
             "accessToken": "pat_" + "2" * 64,
             "tokenType": "Bearer",
             "expiresAt": "2998-10-27T00:00:00+00:00",
+            "retroAchievementsCredentialSync": True,
             "retroAchievements": {"userName": "DeckPlayer", "apiKey": "ra-secret"},
         }
-        self.settings().update(
-            {
-                "retroAchievementsUsername": "legacy-player",
-                "retroAchievementsApiKey": "legacy-secret",
-            }
-        )
         with patch.object(
             activity_api,
             "request_json_status",
@@ -324,9 +327,13 @@ class DeviceAuthorizationTests(BackendTestCase, unittest.IsolatedAsyncioTestCase
             self.settings().get("activityRetroAchievements", dict),
             {"userName": "DeckPlayer", "apiKey": "ra-secret"},
         )
-        self.assertIsNone(self.settings().get("retroAchievementsUsername", str))
-        self.assertIsNone(self.settings().get("retroAchievementsApiKey", str))
         self.assertTrue(self.client.get_state()["retroAchievementsLinked"])
+        self.assertTrue(self.client.get_state()["retroAchievementsCredentialSync"])
+        self.assertTrue(
+            self.settings().get(
+                token_store.ACTIVITY_RETRO_ACHIEVEMENTS_CREDENTIAL_SYNC_SETTING, bool
+            )
+        )
 
     async def test_approval_without_retro_achievements_replaces_old_credentials(
         self,
@@ -337,6 +344,7 @@ class DeviceAuthorizationTests(BackendTestCase, unittest.IsolatedAsyncioTestCase
             "accessToken": "pat_" + "3" * 64,
             "tokenType": "Bearer",
             "expiresAt": "2998-10-27T00:00:00+00:00",
+            "retroAchievementsCredentialSync": False,
         }
         self.settings().update(
             {
@@ -344,8 +352,6 @@ class DeviceAuthorizationTests(BackendTestCase, unittest.IsolatedAsyncioTestCase
                     "userName": "OldPlayer",
                     "apiKey": "old-secret",
                 },
-                "retroAchievementsUsername": "legacy-player",
-                "retroAchievementsApiKey": "legacy-secret",
             }
         )
         with patch.object(
@@ -360,9 +366,8 @@ class DeviceAuthorizationTests(BackendTestCase, unittest.IsolatedAsyncioTestCase
 
         self.assertIsNone(self.client.retro_achievements_credentials())
         self.assertIsNone(self.settings().get("activityRetroAchievements", dict))
-        self.assertIsNone(self.settings().get("retroAchievementsUsername", str))
-        self.assertIsNone(self.settings().get("retroAchievementsApiKey", str))
         self.assertFalse(self.client.get_state()["retroAchievementsLinked"])
+        self.assertFalse(self.client.get_state()["retroAchievementsCredentialSync"])
 
     async def test_approval_with_null_retro_achievements_is_activity_only(self) -> None:
         """Accept an explicit null RetroAchievements credential bundle."""
@@ -371,6 +376,7 @@ class DeviceAuthorizationTests(BackendTestCase, unittest.IsolatedAsyncioTestCase
             "accessToken": "pat_" + "4" * 64,
             "tokenType": "Bearer",
             "expiresAt": "2998-10-27T00:00:00+00:00",
+            "retroAchievementsCredentialSync": True,
             "retroAchievements": None,
         }
         with patch.object(
@@ -385,11 +391,12 @@ class DeviceAuthorizationTests(BackendTestCase, unittest.IsolatedAsyncioTestCase
 
         self.assertEqual(self.client.get_state()["status"], "signedIn")
         self.assertIsNone(self.client.retro_achievements_credentials())
+        self.assertTrue(self.client.get_state()["retroAchievementsCredentialSync"])
 
     async def test_approval_rejects_malformed_retro_achievements_credentials(
         self,
     ) -> None:
-        """Reject credential bundles unless both required fields are nonblank strings."""
+        """Reject incomplete or invalid credential bundles."""
         malformed_credentials = (
             {},
             {"userName": "", "apiKey": "ra-secret"},
@@ -404,6 +411,7 @@ class DeviceAuthorizationTests(BackendTestCase, unittest.IsolatedAsyncioTestCase
                     "accessToken": "pat_" + "5" * 64,
                     "tokenType": "Bearer",
                     "expiresAt": "2998-10-27T00:00:00+00:00",
+                    "retroAchievementsCredentialSync": True,
                     "retroAchievements": retro_achievements,
                 }
                 with patch.object(
@@ -431,6 +439,7 @@ class DeviceAuthorizationTests(BackendTestCase, unittest.IsolatedAsyncioTestCase
             "accessToken": "pat_" + "6" * 64,
             "tokenType": "Bearer",
             "expiresAt": "2998-10-27T00:00:00+00:00",
+            "retroAchievementsCredentialSync": True,
             "retroAchievements": {"userName": "DeckPlayer", "apiKey": "ra-secret"},
         }
         with patch.object(
@@ -460,6 +469,7 @@ class DeviceAuthorizationTests(BackendTestCase, unittest.IsolatedAsyncioTestCase
             "accessToken": "opaque token",
             "tokenType": "bearer",
             "expiresAt": "2999-10-27T00:00:00+00:00",
+            "retroAchievementsCredentialSync": False,
         }
         with patch.object(
             activity_api,
@@ -487,6 +497,7 @@ class DeviceAuthorizationTests(BackendTestCase, unittest.IsolatedAsyncioTestCase
                     "status": "approved",
                     "accessToken": "opaque token",
                     "expiresAt": expires_at,
+                    "retroAchievementsCredentialSync": False,
                 }
                 if token_type is not None:
                     approved["tokenType"] = token_type
@@ -504,6 +515,475 @@ class DeviceAuthorizationTests(BackendTestCase, unittest.IsolatedAsyncioTestCase
                 self.assertIsNone(
                     self.settings().get(token_store.ACCESS_TOKEN_SETTING, str)
                 )
+
+    async def test_approval_requires_explicit_credential_sync_permission(self) -> None:
+        """Reject approved tokens that omit or misuse their sync permission."""
+        for permission in (None, "true", 1):
+            with self.subTest(permission=permission):
+                approved: dict[str, object] = {
+                    "status": "approved",
+                    "accessToken": "opaque token",
+                    "tokenType": "Bearer",
+                    "expiresAt": "2999-10-27T00:00:00+00:00",
+                }
+                if permission is not None:
+                    approved["retroAchievementsCredentialSync"] = permission
+                with patch.object(
+                    activity_api,
+                    "request_json_status",
+                    side_effect=[
+                        self._response(201, self.start_body),
+                        self._response(200, approved),
+                    ],
+                ):
+                    await self._start_and_wait()
+
+                self.assertEqual(self.client.get_state()["status"], "error")
+                self.assertIsNone(
+                    self.settings().get(token_store.ACCESS_TOKEN_SETTING, str)
+                )
+
+    async def test_saved_legacy_session_defaults_to_no_credential_sync_permission(
+        self,
+    ) -> None:
+        """Do not infer endpoint permission from old saved credentials."""
+        self.settings().update(
+            {
+                token_store.ACCESS_TOKEN_SETTING: "saved-token",
+                token_store.ACCESS_TOKEN_EXPIRES_AT_SETTING: (
+                    "2999-01-01T00:00:00+00:00"
+                ),
+                "activityRetroAchievements": {
+                    "userName": "OldPlayer",
+                    "apiKey": "old-secret",
+                },
+            }
+        )
+        client = make_authorization(self.settings())
+
+        state = client.get_state()
+
+        self.assertTrue(state["retroAchievementsLinked"])
+        self.assertFalse(state["retroAchievementsCredentialSync"])
+
+    async def test_sync_replaces_credentials_and_honors_unlink(self) -> None:
+        """Persist valid rotation and unlink responses without exposing secrets."""
+        token = "saved-token"
+        self.settings().update(
+            {
+                token_store.ACCESS_TOKEN_SETTING: token,
+                token_store.ACCESS_TOKEN_EXPIRES_AT_SETTING: (
+                    "2999-01-01T00:00:00+00:00"
+                ),
+                token_store.ACTIVITY_RETRO_ACHIEVEMENTS_CREDENTIAL_SYNC_SETTING: True,
+                "activityRetroAchievements": {
+                    "userName": "OldPlayer",
+                    "apiKey": "old-secret",
+                },
+            }
+        )
+        client = make_authorization(self.settings())
+        with patch.object(
+            activity_api,
+            "request_json_status",
+            side_effect=[
+                self._response(
+                    200,
+                    {
+                        "retroAchievements": {
+                            "userName": "NewPlayer",
+                            "apiKey": "new-secret",
+                        }
+                    },
+                ),
+                self._response(200, {"retroAchievements": None}),
+            ],
+        ) as request:
+            rotated = await client.sync_retro_achievements_credentials()
+            unlinked = await client.sync_retro_achievements_credentials()
+
+        self.assertEqual(
+            request.call_args_list[0].args[0],
+            "https://activity.o3h3.com/api/v1/me/retroachievements/credentials",
+        )
+        self.assertTrue(rotated["retroAchievementsCredentialSync"])
+        self.assertTrue(rotated["retroAchievementsLinked"])
+        self.assertNotIn("retroAchievements", rotated)
+        self.assertTrue(unlinked["retroAchievementsCredentialSync"])
+        self.assertFalse(unlinked["retroAchievementsLinked"])
+        self.assertIsNone(client.retro_achievements_credentials())
+        self.assertEqual(
+            self.settings().get(token_store.ACCESS_TOKEN_SETTING, str), token
+        )
+        self.assertEqual(
+            self.settings().get(token_store.ACCESS_TOKEN_EXPIRES_AT_SETTING, str),
+            "2999-01-01T00:00:00+00:00",
+        )
+        self.assertIsNone(self.settings().get("activityRetroAchievements", dict))
+
+    async def test_malformed_sync_response_preserves_saved_credentials(
+        self,
+    ) -> None:
+        """Require the response object and a complete nullable credential value."""
+        self.settings().update(
+            {
+                token_store.ACCESS_TOKEN_SETTING: "saved-token",
+                token_store.ACCESS_TOKEN_EXPIRES_AT_SETTING: (
+                    "2999-01-01T00:00:00+00:00"
+                ),
+                token_store.ACTIVITY_RETRO_ACHIEVEMENTS_CREDENTIAL_SYNC_SETTING: True,
+                "activityRetroAchievements": {
+                    "userName": "OldPlayer",
+                    "apiKey": "old-secret",
+                },
+            }
+        )
+        client = make_authorization(self.settings())
+        with patch.object(
+            activity_api,
+            "request_json_status",
+            return_value=self._response(
+                200, {"retroAchievements": {"userName": "Player", "apiKey": ""}}
+            ),
+        ):
+            state = await client.sync_retro_achievements_credentials()
+
+        self.assertTrue(state["retroAchievementsCredentialSync"])
+        self.assertTrue(state["retroAchievementsLinked"])
+        credentials = client.retro_achievements_credentials()
+        self.assertEqual(credentials.username, "OldPlayer")
+        self.assertEqual(credentials.api_key, "old-secret")
+
+    async def test_sync_skips_privileged_endpoint_without_permission(self) -> None:
+        """Never request credentials when the saved token lacks the explicit grant."""
+        self.settings().update(
+            {
+                token_store.ACCESS_TOKEN_SETTING: "saved-token",
+                token_store.ACCESS_TOKEN_EXPIRES_AT_SETTING: (
+                    "2999-01-01T00:00:00+00:00"
+                ),
+            }
+        )
+        client = make_authorization(self.settings())
+        with patch.object(activity_api, "request_json_status") as request:
+            state = await client.sync_retro_achievements_credentials()
+
+        request.assert_not_called()
+        self.assertEqual(state["status"], "signedIn")
+        self.assertFalse(state["retroAchievementsCredentialSync"])
+
+    async def test_sync_forbidden_revokes_permission_without_ending_activity_session(
+        self,
+    ) -> None:
+        """Clear protected credentials after a 403 but retain the Activity token."""
+        token = "saved-token"
+        self.settings().update(
+            {
+                token_store.ACCESS_TOKEN_SETTING: token,
+                token_store.ACCESS_TOKEN_EXPIRES_AT_SETTING: (
+                    "2999-01-01T00:00:00+00:00"
+                ),
+                token_store.ACTIVITY_RETRO_ACHIEVEMENTS_CREDENTIAL_SYNC_SETTING: True,
+                "activityRetroAchievements": {
+                    "userName": "DeckPlayer",
+                    "apiKey": "ra-secret",
+                },
+            }
+        )
+        client = make_authorization(self.settings())
+        with patch.object(
+            activity_api,
+            "request_json_status",
+            return_value=self._response(403, {"error": "forbidden"}),
+        ):
+            state = await client.sync_retro_achievements_credentials()
+
+        self.assertEqual(state["status"], "signedIn")
+        self.assertFalse(state["retroAchievementsCredentialSync"])
+        self.assertFalse(state["retroAchievementsLinked"])
+        self.assertFalse(
+            self.settings().get(
+                token_store.ACTIVITY_RETRO_ACHIEVEMENTS_CREDENTIAL_SYNC_SETTING, bool
+            )
+        )
+        self.assertEqual(
+            self.settings().get(token_store.ACCESS_TOKEN_SETTING, str), token
+        )
+        self.assertIsNone(self.settings().get("activityRetroAchievements", dict))
+
+    async def test_sync_401_ends_the_current_session(self) -> None:
+        """Route a rejected credential refresh through the normal sign-out lifecycle."""
+        self.settings().update(
+            {
+                token_store.ACCESS_TOKEN_SETTING: "saved-token",
+                token_store.ACCESS_TOKEN_EXPIRES_AT_SETTING: (
+                    "2999-01-01T00:00:00+00:00"
+                ),
+                token_store.ACTIVITY_RETRO_ACHIEVEMENTS_CREDENTIAL_SYNC_SETTING: True,
+            }
+        )
+        client = make_authorization(self.settings())
+        with patch.object(
+            activity_api,
+            "request_json_status",
+            return_value=self._response(401, {"error": "unauthorized"}),
+        ):
+            state = await client.sync_retro_achievements_credentials()
+
+        self.assertEqual(state["status"], "signedOut")
+        self.assertIsNone(self.settings().get(token_store.ACCESS_TOKEN_SETTING, str))
+
+    async def test_concurrent_sync_calls_share_one_credential_request(self) -> None:
+        """Coalesce frontend and progress-triggered refreshes for one session."""
+        self.settings().update(
+            {
+                token_store.ACCESS_TOKEN_SETTING: "saved-token",
+                token_store.ACCESS_TOKEN_EXPIRES_AT_SETTING: (
+                    "2999-01-01T00:00:00+00:00"
+                ),
+                token_store.ACTIVITY_RETRO_ACHIEVEMENTS_CREDENTIAL_SYNC_SETTING: True,
+            }
+        )
+        client = make_authorization(self.settings())
+        with patch.object(
+            activity_api,
+            "request_json_status",
+            return_value=self._response(200, {"retroAchievements": None}),
+        ) as request:
+            first, second = await asyncio.gather(
+                client.sync_retro_achievements_credentials(),
+                client.sync_retro_achievements_credentials(),
+            )
+
+        request.assert_called_once()
+        self.assertEqual(first, second)
+        self.assertTrue(first["retroAchievementsCredentialSync"])
+        self.assertFalse(first["retroAchievementsLinked"])
+
+    async def test_stale_sync_response_cannot_restore_credentials_after_sign_out(
+        self,
+    ) -> None:
+        """Ignore a late credential response after the session lifecycle advances."""
+        request_started = threading.Event()
+        release_response = threading.Event()
+        self.settings().update(
+            {
+                token_store.ACCESS_TOKEN_SETTING: "saved-token",
+                token_store.ACCESS_TOKEN_EXPIRES_AT_SETTING: (
+                    "2999-01-01T00:00:00+00:00"
+                ),
+                token_store.ACTIVITY_RETRO_ACHIEVEMENTS_CREDENTIAL_SYNC_SETTING: True,
+            }
+        )
+        client = make_authorization(self.settings())
+
+        def delayed_response(_: str, **__: object) -> HttpJsonResponse:
+            """Hold the endpoint response until the credential has been removed."""
+            request_started.set()
+            _ = release_response.wait(timeout=5)
+            return self._response(
+                200,
+                {
+                    "retroAchievements": {
+                        "userName": "LatePlayer",
+                        "apiKey": "late-secret",
+                    }
+                },
+            )
+
+        with patch.object(
+            activity_api, "request_json_status", side_effect=delayed_response
+        ):
+            refresh = asyncio.create_task(client.sync_retro_achievements_credentials())
+            self.assertTrue(await asyncio.to_thread(request_started.wait, 5))
+            await client.sign_out()
+            release_response.set()
+            state = await refresh
+
+        self.assertEqual(state["status"], "signedOut")
+        self.assertIsNone(client.retro_achievements_credentials())
+        self.assertIsNone(self.settings().get("activityRetroAchievements", dict))
+
+    async def test_stale_sync_response_cannot_restore_same_token_replacement(
+        self,
+    ) -> None:
+        """Use generation protection even when a replacement reuses the token string."""
+        request_started = threading.Event()
+        release_response = threading.Event()
+        token = "saved-token"
+        expires_at = "2999-01-01T00:00:00+00:00"
+        self.settings().update(
+            {
+                token_store.ACCESS_TOKEN_SETTING: token,
+                token_store.ACCESS_TOKEN_EXPIRES_AT_SETTING: expires_at,
+                token_store.ACTIVITY_RETRO_ACHIEVEMENTS_CREDENTIAL_SYNC_SETTING: True,
+            }
+        )
+        client = make_authorization(self.settings())
+
+        def delayed_response(_: str, **__: object) -> HttpJsonResponse:
+            """Return credentials only after the equal-token session replacement."""
+            request_started.set()
+            _ = release_response.wait(timeout=5)
+            return self._response(
+                200,
+                {
+                    "retroAchievements": {
+                        "userName": "LatePlayer",
+                        "apiKey": "late-secret",
+                    }
+                },
+            )
+
+        with patch.object(
+            activity_api, "request_json_status", side_effect=delayed_response
+        ):
+            refresh = asyncio.create_task(client.sync_retro_achievements_credentials())
+            self.assertTrue(await asyncio.to_thread(request_started.wait, 5))
+            await client._save_approved_token(ApprovedToken(token, expires_at, False))
+            release_response.set()
+            state = await refresh
+
+        self.assertFalse(state["retroAchievementsCredentialSync"])
+        self.assertFalse(state["retroAchievementsLinked"])
+        self.assertIsNone(client.retro_achievements_credentials())
+
+    async def test_sync_publishes_expiry_once_before_later_profile_reads(self) -> None:
+        """Notify subscribers when credential refresh first observes session expiry."""
+        self.settings().update(
+            {
+                token_store.ACCESS_TOKEN_SETTING: "saved-token",
+                token_store.ACCESS_TOKEN_EXPIRES_AT_SETTING: (
+                    "2999-01-01T00:00:00+00:00"
+                ),
+                token_store.ACTIVITY_RETRO_ACHIEVEMENTS_CREDENTIAL_SYNC_SETTING: True,
+                "activityRetroAchievements": {
+                    "userName": "DeckPlayer",
+                    "apiKey": "ra-secret",
+                },
+            }
+        )
+        client = make_authorization(self.settings())
+        self.settings().update(
+            {token_store.ACCESS_TOKEN_EXPIRES_AT_SETTING: "2000-01-01T00:00:00+00:00"}
+        )
+
+        with patch.object(activity_api, "request_json_status") as request:
+            state = await client.sync_retro_achievements_credentials()
+            await client.sync_retro_achievements_credentials()
+            await client.get_user()
+
+        request.assert_not_called()
+        self.assertEqual(state["status"], "signedOut")
+        self.assertFalse(state["retroAchievementsLinked"])
+        self.assertFalse(state["retroAchievementsCredentialSync"])
+        self.assertIsNone(client.access_token())
+        self.assertIsNone(client.retro_achievements_credentials())
+        self.assertEqual(
+            [call.args[1]["status"] for call in decky.emit.call_args_list],
+            ["signedOut"],
+        )
+
+    async def test_shutdown_prevents_queued_and_later_credential_refreshes(
+        self,
+    ) -> None:
+        """Skip credential refreshes after shutdown wins."""
+        self.settings().update(
+            {
+                token_store.ACCESS_TOKEN_SETTING: "saved-token",
+                token_store.ACCESS_TOKEN_EXPIRES_AT_SETTING: (
+                    "2999-01-01T00:00:00+00:00"
+                ),
+                token_store.ACTIVITY_RETRO_ACHIEVEMENTS_CREDENTIAL_SYNC_SETTING: True,
+            }
+        )
+        client = make_authorization(self.settings())
+        with patch.object(
+            activity_api,
+            "request_json_status",
+            return_value=self._response(
+                200,
+                {
+                    "retroAchievements": {
+                        "userName": "LatePlayer",
+                        "apiKey": "late-secret",
+                    }
+                },
+            ),
+        ) as request:
+            async with client._lifecycle_lock:
+                shutdown = asyncio.create_task(client.shutdown())
+                refresh = asyncio.create_task(
+                    client.sync_retro_achievements_credentials()
+                )
+                await asyncio.sleep(0)
+                await asyncio.sleep(0)
+            await asyncio.gather(shutdown, refresh, return_exceptions=True)
+            await client.sync_retro_achievements_credentials()
+
+        request.assert_not_called()
+        self.assertIsNone(client.retro_achievements_credentials())
+        self.assertEqual(client.access_token(), "saved-token")
+        decky.emit.assert_not_awaited()
+
+    async def test_shutdown_cancels_and_drains_inflight_credential_refresh(
+        self,
+    ) -> None:
+        """Wait for blocking HTTP work without applying its late credential response."""
+        request_started = threading.Event()
+        release_response = threading.Event()
+        self.settings().update(
+            {
+                token_store.ACCESS_TOKEN_SETTING: "saved-token",
+                token_store.ACCESS_TOKEN_EXPIRES_AT_SETTING: (
+                    "2999-01-01T00:00:00+00:00"
+                ),
+                token_store.ACTIVITY_RETRO_ACHIEVEMENTS_CREDENTIAL_SYNC_SETTING: True,
+                "activityRetroAchievements": {
+                    "userName": "DeckPlayer",
+                    "apiKey": "ra-secret",
+                },
+            }
+        )
+        client = make_authorization(self.settings())
+
+        def delayed_response(_: str, **__: object) -> HttpJsonResponse:
+            request_started.set()
+            _ = release_response.wait(timeout=5)
+            return self._response(
+                200,
+                {
+                    "retroAchievements": {
+                        "userName": "LatePlayer",
+                        "apiKey": "late-secret",
+                    }
+                },
+            )
+
+        with patch.object(
+            activity_api, "request_json_status", side_effect=delayed_response
+        ):
+            refresh = asyncio.create_task(client.sync_retro_achievements_credentials())
+            shutdown = None
+            try:
+                self.assertTrue(await asyncio.to_thread(request_started.wait, 5))
+                shutdown = asyncio.create_task(client.shutdown())
+                await asyncio.sleep(0)
+                self.assertFalse(shutdown.done())
+            finally:
+                release_response.set()
+                if shutdown is not None:
+                    await shutdown
+                await asyncio.gather(refresh, return_exceptions=True)
+
+        with self.assertRaises(asyncio.CancelledError):
+            await refresh
+        self.assertEqual(
+            client.retro_achievements_credentials(),
+            RetroAchievementsCredentials("DeckPlayer", "ra-secret"),
+        )
+        self.assertEqual(client.access_token(), "saved-token")
+        decky.emit.assert_not_awaited()
 
     async def test_start_rejects_malformed_required_grant_fields(self) -> None:
         """Reject grants missing required values or using invalid positive intervals."""
@@ -536,7 +1016,9 @@ class DeviceAuthorizationTests(BackendTestCase, unittest.IsolatedAsyncioTestCase
         self.settings().update(
             {
                 token_store.ACCESS_TOKEN_SETTING: "expired-token",
-                token_store.ACCESS_TOKEN_EXPIRES_AT_SETTING: "2000-01-01T00:00:00+00:00",
+                token_store.ACCESS_TOKEN_EXPIRES_AT_SETTING: (
+                    "2000-01-01T00:00:00+00:00"
+                ),
                 "activityRetroAchievements": {
                     "userName": "DeckPlayer",
                     "apiKey": "ra-secret",
@@ -560,7 +1042,9 @@ class DeviceAuthorizationTests(BackendTestCase, unittest.IsolatedAsyncioTestCase
         self.settings().update(
             {
                 token_store.ACCESS_TOKEN_SETTING: "saved-token",
-                token_store.ACCESS_TOKEN_EXPIRES_AT_SETTING: "2999-01-01T00:00:00+00:00",
+                token_store.ACCESS_TOKEN_EXPIRES_AT_SETTING: (
+                    "2999-01-01T00:00:00+00:00"
+                ),
                 "activityRetroAchievements": {
                     "userName": "DeckPlayer",
                     "apiKey": "ra-secret",
@@ -578,7 +1062,9 @@ class DeviceAuthorizationTests(BackendTestCase, unittest.IsolatedAsyncioTestCase
         self.settings().update(
             {
                 token_store.ACCESS_TOKEN_SETTING: "saved-token",
-                token_store.ACCESS_TOKEN_EXPIRES_AT_SETTING: "2999-01-01T00:00:00+00:00",
+                token_store.ACCESS_TOKEN_EXPIRES_AT_SETTING: (
+                    "2999-01-01T00:00:00+00:00"
+                ),
                 "gameRecognitions": {
                     "a" * 32: {"gameId": "recognized-game", "checkedAt": 1_000},
                     "b" * 32: {"gameId": None, "checkedAt": 1_000},
@@ -596,11 +1082,13 @@ class DeviceAuthorizationTests(BackendTestCase, unittest.IsolatedAsyncioTestCase
     async def test_authorization_snapshot_rechecks_a_token_that_expired_after_login(
         self,
     ) -> None:
-        """Do not let the frontend dispatch protected RPCs using stale signed-in state."""
+        """Prevent stale signed-in state from dispatching protected RPCs."""
         self.settings().update(
             {
                 token_store.ACCESS_TOKEN_SETTING: "saved-token",
-                token_store.ACCESS_TOKEN_EXPIRES_AT_SETTING: "2999-01-01T00:00:00+00:00",
+                token_store.ACCESS_TOKEN_EXPIRES_AT_SETTING: (
+                    "2999-01-01T00:00:00+00:00"
+                ),
             }
         )
         client = make_authorization(self.settings())
@@ -621,6 +1109,7 @@ class DeviceAuthorizationTests(BackendTestCase, unittest.IsolatedAsyncioTestCase
             "accessToken": "pat_" + "0" * 64,
             "tokenType": "Bearer",
             "expiresAt": "2998-10-27T00:00:00+00:00",
+            "retroAchievementsCredentialSync": False,
         }
         with patch.object(
             activity_api,
@@ -677,6 +1166,7 @@ class DeviceAuthorizationTests(BackendTestCase, unittest.IsolatedAsyncioTestCase
             "accessToken": "pat_" + "0" * 64,
             "tokenType": "Bearer",
             "expiresAt": "2998-10-27T00:00:00+00:00",
+            "retroAchievementsCredentialSync": False,
         }
 
         def request_json_status(url: str, **_: object) -> HttpJsonResponse:
@@ -702,7 +1192,7 @@ class DeviceAuthorizationTests(BackendTestCase, unittest.IsolatedAsyncioTestCase
         )
 
     async def test_missing_grant_restarts_with_a_fresh_code(self) -> None:
-        """Restart authorization when the API reports that a device grant disappeared."""
+        """Restart authorization after a missing device grant."""
         second_start = dict(self.start_body, userCode="LMNP-QRST")
         with patch.object(
             activity_api,
@@ -800,7 +1290,9 @@ class DeviceAuthorizationTests(BackendTestCase, unittest.IsolatedAsyncioTestCase
         self.settings().update(
             {
                 token_store.ACCESS_TOKEN_SETTING: token,
-                token_store.ACCESS_TOKEN_EXPIRES_AT_SETTING: "2999-10-27T00:00:00+00:00",
+                token_store.ACCESS_TOKEN_EXPIRES_AT_SETTING: (
+                    "2999-10-27T00:00:00+00:00"
+                ),
             }
         )
         with patch.object(
@@ -833,12 +1325,14 @@ class DeviceAuthorizationTests(BackendTestCase, unittest.IsolatedAsyncioTestCase
     async def test_get_user_tolerates_optional_fields_but_requires_nickname(
         self,
     ) -> None:
-        """Return normalized optional fields and reject a missing or invalid nickname."""
+        """Normalize optional fields while requiring a valid nickname."""
         token = "saved-token"
         self.settings().update(
             {
                 token_store.ACCESS_TOKEN_SETTING: token,
-                token_store.ACCESS_TOKEN_EXPIRES_AT_SETTING: "2999-10-27T00:00:00+00:00",
+                token_store.ACCESS_TOKEN_EXPIRES_AT_SETTING: (
+                    "2999-10-27T00:00:00+00:00"
+                ),
             }
         )
         for body, expected in (
@@ -853,13 +1347,15 @@ class DeviceAuthorizationTests(BackendTestCase, unittest.IsolatedAsyncioTestCase
             ({"avatarUrl": "https://avatar.example"}, None),
             ({"nickname": None}, None),
         ):
-            with self.subTest(body=body):
-                with patch.object(
+            with (
+                self.subTest(body=body),
+                patch.object(
                     activity_api,
                     "request_json_status",
                     return_value=self._response(200, body),
-                ):
-                    self.assertEqual(await self.client.get_user(), expected)
+                ),
+            ):
+                self.assertEqual(await self.client.get_user(), expected)
 
     async def test_get_user_401_cancels_active_task_and_ends_session(self) -> None:
         """Clear a rejected token, cancel polling, and publish signed-out last."""
@@ -867,7 +1363,9 @@ class DeviceAuthorizationTests(BackendTestCase, unittest.IsolatedAsyncioTestCase
         self.settings().update(
             {
                 token_store.ACCESS_TOKEN_SETTING: token,
-                token_store.ACCESS_TOKEN_EXPIRES_AT_SETTING: "2998-10-27T00:00:00+00:00",
+                token_store.ACCESS_TOKEN_EXPIRES_AT_SETTING: (
+                    "2998-10-27T00:00:00+00:00"
+                ),
                 "activityRetroAchievements": {
                     "userName": "DeckPlayer",
                     "apiKey": "ra-secret",
@@ -899,6 +1397,7 @@ class DeviceAuthorizationTests(BackendTestCase, unittest.IsolatedAsyncioTestCase
         expected_state = {
             "accessTokensUrl": "",
             "codeExpiresAt": 0,
+            "retroAchievementsCredentialSync": False,
             "retroAchievementsLinked": False,
             "status": "signedOut",
             "tokenExpiresAt": "",
@@ -936,7 +1435,9 @@ class DeviceAuthorizationTests(BackendTestCase, unittest.IsolatedAsyncioTestCase
         self.settings().update(
             {
                 token_store.ACCESS_TOKEN_SETTING: token_a,
-                token_store.ACCESS_TOKEN_EXPIRES_AT_SETTING: "2998-10-27T00:00:00+00:00",
+                token_store.ACCESS_TOKEN_EXPIRES_AT_SETTING: (
+                    "2998-10-27T00:00:00+00:00"
+                ),
                 "activityRetroAchievements": {
                     "userName": "AccountA",
                     "apiKey": "account-a-secret",
@@ -948,7 +1449,9 @@ class DeviceAuthorizationTests(BackendTestCase, unittest.IsolatedAsyncioTestCase
             self.settings().update(
                 {
                     token_store.ACCESS_TOKEN_SETTING: token_b,
-                    token_store.ACCESS_TOKEN_EXPIRES_AT_SETTING: "2998-11-27T00:00:00+00:00",
+                    token_store.ACCESS_TOKEN_EXPIRES_AT_SETTING: (
+                        "2998-11-27T00:00:00+00:00"
+                    ),
                     "activityRetroAchievements": {
                         "userName": "AccountB",
                         "apiKey": "account-b-secret",
@@ -978,13 +1481,15 @@ class DeviceAuthorizationTests(BackendTestCase, unittest.IsolatedAsyncioTestCase
         decky.emit.assert_not_called()
 
     async def test_stale_user_success_cannot_return_old_account(self) -> None:
-        """Ignore the old account after replacing its token without changing generation."""
+        """Ignore old account data after token replacement."""
         token_a = "pat_" + "a" * 64
         token_b = "pat_" + "b" * 64
         self.settings().update(
             {
                 token_store.ACCESS_TOKEN_SETTING: token_a,
-                token_store.ACCESS_TOKEN_EXPIRES_AT_SETTING: "2998-10-27T00:00:00+00:00",
+                token_store.ACCESS_TOKEN_EXPIRES_AT_SETTING: (
+                    "2998-10-27T00:00:00+00:00"
+                ),
             }
         )
 
@@ -992,7 +1497,9 @@ class DeviceAuthorizationTests(BackendTestCase, unittest.IsolatedAsyncioTestCase
             self.settings().update(
                 {
                     token_store.ACCESS_TOKEN_SETTING: token_b,
-                    token_store.ACCESS_TOKEN_EXPIRES_AT_SETTING: "2998-11-27T00:00:00+00:00",
+                    token_store.ACCESS_TOKEN_EXPIRES_AT_SETTING: (
+                        "2998-11-27T00:00:00+00:00"
+                    ),
                 }
             )
             return self._response(
@@ -1043,7 +1550,9 @@ class DeviceAuthorizationTests(BackendTestCase, unittest.IsolatedAsyncioTestCase
         self.settings().update(
             {
                 token_store.ACCESS_TOKEN_SETTING: token,
-                token_store.ACCESS_TOKEN_EXPIRES_AT_SETTING: "2998-10-27T00:00:00+00:00",
+                token_store.ACCESS_TOKEN_EXPIRES_AT_SETTING: (
+                    "2998-10-27T00:00:00+00:00"
+                ),
             }
         )
 

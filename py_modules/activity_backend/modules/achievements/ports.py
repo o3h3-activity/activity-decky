@@ -3,12 +3,19 @@
 from pathlib import Path
 from typing import Protocol
 
-from activity_backend.modules.authorization.api import RetroAchievementsCredentials
+from activity_backend.modules.authorization.api import (
+    DeviceAuthorizationState,
+    RetroAchievementsCredentials,
+)
 from activity_backend.modules.identity.api import IdentityLookup
 
 
 class RetroAchievementsSession(Protocol):
     """Session access required to make a RetroAchievements request."""
+
+    async def sync_retro_achievements_credentials(self) -> DeviceAuthorizationState:
+        """Refresh permitted credentials without exposing them to the caller."""
+        ...
 
     def retro_achievements_credentials(self) -> RetroAchievementsCredentials | None:
         """Return credentials issued for the current valid Activity session."""

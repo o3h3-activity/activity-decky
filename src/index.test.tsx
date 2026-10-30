@@ -133,6 +133,7 @@ function authorizationState(
 		codeExpiresAt: 0,
 		message: "",
 		retroAchievementsLinked: false,
+		retroAchievementsCredentialSync: false,
 		status,
 		tokenExpiresAt,
 		userCode: "",

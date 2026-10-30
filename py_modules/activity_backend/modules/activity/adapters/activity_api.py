@@ -1,17 +1,25 @@
-"""HTTP translation for Activity feed and comment operations."""
+"""HTTP translation for Activity feed, profile, and additive playtime operations."""
 
 from __future__ import annotations
 
-from collections.abc import Sequence
-
-from activity_backend.shared import ActivityTransport
+from typing import TYPE_CHECKING
 
 from ..ports import ActivityEndpoint
 from ..results import EndpointFailure, EndpointResult, EndpointSuccess
-from ..validation import ActivityQuery, CommentPayload
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+    from activity_backend.shared import ActivityTransport
+
+    from ..playtime import RecordPlaytimeSession
+    from ..validation import ActivityQuery, CommentPayload
 
 ACTIVITY_PATH = "/api/v1/activity"
 GAMES_PATH = "/api/v1/games"
+PROFILE_GAMES_PATH = "/api/v1/me/games"
+PLAYTIME_DAYS_PATH = "/api/v1/me/playtime/days"
+RECENT_PLAYTIME_PATH = "/api/v1/me/playtime/recent"
 
 
 class ActivityApiEndpoint(ActivityEndpoint):
@@ -37,11 +45,7 @@ class ActivityApiEndpoint(ActivityEndpoint):
         )
 
     async def get_friends_gameplay(
-        self,
-        game_id: str,
-        release_id: str,
-        release_revision_id: str,
-        token: str,
+        self, game_id: str, release_id: str, release_revision_id: str, token: str
     ) -> EndpointResult:
         """Request friends' gameplay for one release version of a game."""
         return await self._send(
@@ -54,6 +58,21 @@ class ActivityApiEndpoint(ActivityEndpoint):
             False,
         )
 
+    async def get_profile_games(
+        self, after: str | None, limit: int | None, token: str
+    ) -> EndpointResult:
+        """List release versions played or voted for by the authenticated user."""
+        query: list[tuple[str, str]] = []
+        if after is not None:
+            query.append(("after", after))
+        if limit is not None:
+            query.append(("limit", str(limit)))
+        return await self._send("GET", PROFILE_GAMES_PATH, query, None, token, False)
+
+    async def get_recent_playtime(self, token: str) -> EndpointResult:
+        """List recent release-version playtime for the authenticated user."""
+        return await self._send("GET", RECENT_PLAYTIME_PATH, (), None, token, False)
+
     async def post_comment(self, payload: CommentPayload, token: str) -> EndpointResult:
         """Create a comment with the endpoint's JSON request shape."""
         return await self._send(
@@ -64,10 +83,7 @@ class ActivityApiEndpoint(ActivityEndpoint):
                 payload["release_revision_id"],
             ),
             (),
-            {
-                "body": payload["body"],
-                "bodyFormat": "steam-bbcode",
-            },
+            {"body": payload["body"], "bodyFormat": "steam-bbcode"},
             token,
             False,
         )
@@ -80,35 +96,27 @@ class ActivityApiEndpoint(ActivityEndpoint):
         comment_id: str,
         token: str,
     ) -> EndpointResult:
-        """Delete a comment and accept the endpoint's empty success response."""
+        """Delete one authenticated comment and return the empty success body."""
         return await self._send(
             "DELETE",
-            f"{self._comments_path(game_id, release_id, release_revision_id)}/{comment_id}",
+            f"{self._comments_path(game_id, release_id, release_revision_id)}"
+            f"/{comment_id}",
             (),
             None,
             token,
             True,
         )
 
-    async def replace_playtime(
-        self,
-        game_id: str,
-        release_id: str,
-        release_revision_id: str,
-        date: str,
-        seconds: int,
-        token: str,
+    async def record_playtime(
+        self, sessions: Sequence[RecordPlaytimeSession], token: str
     ) -> EndpointResult:
-        """Replace one UTC day's playtime total, accepting the API's empty 204."""
-        return await self._send(
-            "PUT",
-            f"/api/v1/me/games/{game_id}/releases/{release_id}"
-            f"/versions/{release_revision_id}/playtime/days/{date}",
-            (),
-            {"seconds": seconds},
-            token,
-            True,
+        """Atomically add no more than one thousand whole-second sessions."""
+        result = await self._send(
+            "POST", PLAYTIME_DAYS_PATH, (), list(sessions), token, True
         )
+        if isinstance(result, EndpointSuccess) and result.status != 204:
+            return EndpointFailure("invalidResponse", result.status)
+        return result
 
     @staticmethod
     def _comments_path(game_id: str, release_id: str, release_revision_id: str) -> str:

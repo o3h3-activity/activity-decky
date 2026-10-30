@@ -182,7 +182,24 @@ export interface paths {
 		patch?: never;
 		trace?: never;
 	};
-	"/api/v1/me/games/{gameId}/releases/{releaseId}/versions/{releaseVersionId}/playtime/days/{date}": {
+	"/api/v1/me/games": {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		/** Lists every release version the authenticated user has played or currently voted for. */
+		get: operations["list_profile_games"];
+		put?: never;
+		post?: never;
+		delete?: never;
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
+	"/api/v1/me/playtime/days": {
 		parameters: {
 			query?: never;
 			header?: never;
@@ -190,8 +207,25 @@ export interface paths {
 			cookie?: never;
 		};
 		get?: never;
-		/** Replaces the authenticated user's recorded total for one release version and UTC day. */
-		put: operations["replace_playtime"];
+		put?: never;
+		/** Atomically adds up to one thousand playing sessions to the authenticated user's daily totals. */
+		post: operations["record_playtime"];
+		delete?: never;
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
+	"/api/v1/me/playtime/recent": {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		/** Lists the authenticated user's recent release-version playtime activity. */
+		get: operations["list_recent_playtime"];
+		put?: never;
 		post?: never;
 		delete?: never;
 		options?: never;
@@ -214,6 +248,22 @@ export interface paths {
 		 *     earlier game commits remain and repeating the request safely reconciles them.
 		 */
 		post: operations["sync_retroachievements_achievements"];
+		delete?: never;
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
+	"/api/v1/me/retroachievements/credentials": {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		get: operations["sync_retroachievements_credentials"];
+		put?: never;
+		post?: never;
 		delete?: never;
 		options?: never;
 		head?: never;
@@ -369,8 +419,9 @@ export interface components {
 					/** Format: date-time */
 					expiresAt: string;
 					retroAchievements?:
-						| null
-						| components["schemas"]["DeviceRetroAchievementsResponse"];
+						| components["schemas"]["DeviceRetroAchievementsResponse"]
+						| null;
+					retroAchievementsCredentialSync: boolean;
 					/** @enum {string} */
 					status: "approved";
 					tokenType: string;
@@ -427,6 +478,62 @@ export interface components {
 			}[];
 			nextCursor?: string | null;
 		};
+		ProfileGamePlatformResponse: {
+			name: string;
+			slug: string;
+		};
+		ProfileGameResponse: {
+			coverUrls: string[];
+			gameId: string;
+			/** Format: date */
+			lastPlayedOn?: string | null;
+			/** Format: int64 */
+			minutesPlayedLastTwoWeeks: number;
+			/** Format: int64 */
+			minutesPlayedTotal: number;
+			platform: components["schemas"]["ProfileGamePlatformResponse"];
+			releaseId: string;
+			releaseVersionId: string;
+			serials: string[];
+			title: string;
+			voted: boolean;
+		};
+		ProfileGamesResponse: {
+			items: components["schemas"]["ProfileGameResponse"][];
+			nextCursor?: string | null;
+		};
+		RecentPlaytimePlatformResponse: {
+			name: string;
+			slug: string;
+		};
+		RecentPlaytimeResponse: {
+			/**
+			 * Format: int64
+			 * @description Whole minutes across every recorded version over today and the preceding thirteen UTC dates.
+			 */
+			minutesPlayedLastTwoWeeks: number;
+			versions: components["schemas"]["RecentVersionPlaytimeResponse"][];
+			/**
+			 * Format: int64
+			 * @description Distinct versions with positive seconds in that window, before the response limit.
+			 */
+			versionsPlayedLastTwoWeeks: number;
+		};
+		RecentVersionPlaytimeResponse: {
+			coverUrls: string[];
+			gameId: string;
+			/** Format: date */
+			lastPlayedOn: string;
+			/** Format: int64 */
+			minutesPlayedLastTwoWeeks: number;
+			/** Format: int64 */
+			minutesPlayedTotal: number;
+			platform: components["schemas"]["RecentPlaytimePlatformResponse"];
+			releaseId: string;
+			releaseVersionId: string;
+			serials: string[];
+			title: string;
+		};
 		/**
 		 * @description A content hash the client computed with rcheevos and the serial it read
 		 *     from the same media.
@@ -448,9 +555,30 @@ export interface components {
 			 */
 			serial: string;
 		};
-		ReplacePlaytimeRequest: {
-			/** Format: int64 */
+		/** @description One playing session's duration for a concrete release version and UTC day. */
+		RecordPlaytimeSessionRequest: {
+			/** Format: date */
+			date: string;
+			/** Format: uuid */
+			gameId: string;
+			/** Format: uuid */
+			releaseId: string;
+			/** Format: uuid */
+			releaseVersionId: string;
+			/**
+			 * Format: int64
+			 * @description Seconds played in this session, added to the stored daily total.
+			 */
 			seconds: number;
+		};
+		RetroAchievementsCredentialResponse: {
+			apiKey: string;
+			userName: string;
+		};
+		RetroAchievementsCredentialSyncResponse: {
+			retroAchievements:
+				| components["schemas"]["RetroAchievementsCredentialResponse"]
+				| null;
 		};
 		/** @enum {string} */
 		SyncProgressStageResponse: "discovering" | "syncing";
@@ -892,6 +1020,15 @@ export interface operations {
 			};
 			/** @description Request timed out (INTERNAL error envelope) */
 			408: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					"application/json": components["schemas"]["ErrorEnvelope"];
+				};
+			};
+			/** @description The caller already claims four distinct hashes for the resolved release version; no vote was stored */
+			409: {
 				headers: {
 					[name: string]: unknown;
 				};
@@ -1445,29 +1582,84 @@ export interface operations {
 			};
 		};
 	};
-	replace_playtime: {
+	list_profile_games: {
+		parameters: {
+			query?: {
+				after?: string;
+				limit?: number;
+			};
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		requestBody?: never;
+		responses: {
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					"application/json": components["schemas"]["ProfileGamesResponse"];
+				};
+			};
+			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					"application/json": components["schemas"]["ErrorEnvelope"];
+				};
+			};
+			/** @description Request timed out (INTERNAL error envelope) */
+			408: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					"application/json": components["schemas"]["ErrorEnvelope"];
+				};
+			};
+			422: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					"application/json": components["schemas"]["ErrorEnvelope"];
+				};
+			};
+			500: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					"application/json": components["schemas"]["ErrorEnvelope"];
+				};
+			};
+			503: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					"application/json": components["schemas"]["ErrorEnvelope"];
+				};
+			};
+		};
+	};
+	record_playtime: {
 		parameters: {
 			query?: never;
 			header?: never;
-			path: {
-				/** @description Catalog game UUID */
-				gameId: string;
-				/** @description Catalog release UUID */
-				releaseId: string;
-				/** @description Catalog release version UUID */
-				releaseVersionId: string;
-				/** @description UTC day in YYYY-MM-DD form */
-				date: string;
-			};
+			path?: never;
 			cookie?: never;
 		};
+		/** @description An atomic batch of 1 to 1,000 playing sessions. Repeated targets are summed with stored daily totals; retransmissions count again. */
 		requestBody: {
 			content: {
-				"application/json": components["schemas"]["ReplacePlaytimeRequest"];
+				"application/json": components["schemas"]["RecordPlaytimeSessionRequest"][];
 			};
 		};
 		responses: {
-			/** @description The daily total was replaced */
+			/** @description Every session was added atomically */
 			204: {
 				headers: {
 					[name: string]: unknown;
@@ -1525,6 +1717,58 @@ export interface operations {
 				};
 			};
 			422: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					"application/json": components["schemas"]["ErrorEnvelope"];
+				};
+			};
+			500: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					"application/json": components["schemas"]["ErrorEnvelope"];
+				};
+			};
+			503: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					"application/json": components["schemas"]["ErrorEnvelope"];
+				};
+			};
+		};
+	};
+	list_recent_playtime: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		requestBody?: never;
+		responses: {
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					"application/json": components["schemas"]["RecentPlaytimeResponse"];
+				};
+			};
+			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					"application/json": components["schemas"]["ErrorEnvelope"];
+				};
+			};
+			/** @description Request timed out (INTERNAL error envelope) */
+			408: {
 				headers: {
 					[name: string]: unknown;
 				};
@@ -1637,6 +1881,70 @@ export interface operations {
 				headers: {
 					/** @description Optional bounded delay in seconds before retrying. */
 					"Retry-After"?: string;
+					[name: string]: unknown;
+				};
+				content: {
+					"application/json": components["schemas"]["ErrorEnvelope"];
+				};
+			};
+		};
+	};
+	sync_retroachievements_credentials: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		requestBody?: never;
+		responses: {
+			/** @description Current verified credentials. retroAchievements is null when the connection has been unlinked. */
+			200: {
+				headers: {
+					/** @description Always no-store. */
+					"Cache-Control"?: string;
+					[name: string]: unknown;
+				};
+				content: {
+					"application/json": components["schemas"]["RetroAchievementsCredentialSyncResponse"];
+				};
+			};
+			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					"application/json": components["schemas"]["ErrorEnvelope"];
+				};
+			};
+			/** @description RetroAchievements credential sync permission is required. */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					"application/json": components["schemas"]["ErrorEnvelope"];
+				};
+			};
+			/** @description Request timed out (INTERNAL error envelope) */
+			408: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					"application/json": components["schemas"]["ErrorEnvelope"];
+				};
+			};
+			500: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					"application/json": components["schemas"]["ErrorEnvelope"];
+				};
+			};
+			503: {
+				headers: {
 					[name: string]: unknown;
 				};
 				content: {

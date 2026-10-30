@@ -5,18 +5,17 @@ import type {
 	QueryRpcName,
 	RpcArgs,
 	RpcCall,
-	RpcName,
 	RpcResult,
 } from "./contract";
-import { type ApiResult, apiFailure, isSignInError } from "./result";
-import { untimedRpc, withDeadline } from "./transport";
+import { apiFailure, isSignInError } from "./result";
+import { RPC_TIMEOUT_MS, untimedRpc, withDeadline } from "./transport";
 
 export type SignInListener = () => void;
 export type Unsubscribe = () => void;
 
 export type ApiResultCall<N extends ApiResultRpcName> = (
 	...args: RpcArgs<N>
-) => Promise<ApiResult>;
+) => Promise<RpcResult<N>>;
 
 /**
  * Dispatches account-bound RPCs only while signed in, and tells listeners whenever the user must sign in.
@@ -37,10 +36,14 @@ export class AuthorizationGate {
 		};
 	}
 
-	/** Signed out: `signedOut()` without dispatch. Preflight failures, transport failures and the deadline reject. */
+	/**
+	 * Signed out: `signedOut()` without dispatch. Preflight failures, transport failures and the deadline reject.
+	 * `timeoutMs` suits RPCs whose backend work legitimately outlasts the default deadline.
+	 */
 	guard<N extends QueryRpcName>(
 		name: N,
 		signedOut: () => RpcResult<N>,
+		timeoutMs = RPC_TIMEOUT_MS,
 	): RpcCall<N> {
 		const request = untimedRpc(name);
 
@@ -58,7 +61,7 @@ export class AuthorizationGate {
 				this.requestSignIn();
 
 				return signedOut();
-			});
+			}, timeoutMs);
 	}
 
 	/** Never rejects: preflight, transport and deadline failures resolve `unreachable`. */
@@ -74,7 +77,9 @@ export class AuthorizationGate {
 
 					expired.throwIfAborted();
 
-					return signedIn ? request(...args) : apiFailure("notSignedIn");
+					return signedIn
+						? request(...args)
+						: (apiFailure("notSignedIn") as RpcResult<N>);
 				}),
 			);
 	}
@@ -92,22 +97,22 @@ export class AuthorizationGate {
 			this.settle(name, async () =>
 				(await withDeadline(async () => this.isSignedIn()))
 					? request(...args)
-					: apiFailure("notSignedIn"),
+					: (apiFailure("notSignedIn") as RpcResult<N>),
 			);
 	}
 
-	private async settle(
-		name: RpcName,
-		attempt: () => Promise<ApiResult>,
-	): Promise<ApiResult> {
-		let result: ApiResult;
+	private async settle<N extends ApiResultRpcName>(
+		name: N,
+		attempt: () => Promise<RpcResult<N>>,
+	): Promise<RpcResult<N>> {
+		let result: RpcResult<N>;
 
 		try {
 			result = await attempt();
 		} catch (error: unknown) {
 			logger.error(`[api] ${name} failed`, error);
 
-			return apiFailure("unreachable");
+			return apiFailure("unreachable") as RpcResult<N>;
 		}
 
 		if (!result.ok && isSignInError(result.error)) {

@@ -2,14 +2,9 @@
 
 from __future__ import annotations
 
-import logging
 import time
-from collections.abc import Callable
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
-from activity_backend.modules.authorization.api import Session
-
-from .ports import RecognitionCache, RecognitionEndpoint
 from .recognition import (
     GameIdentity,
     GameRecognition,
@@ -17,6 +12,14 @@ from .recognition import (
     cached_recognition,
     unique_identities,
 )
+
+if TYPE_CHECKING:
+    import logging
+    from collections.abc import Callable
+
+    from activity_backend.modules.authorization.api import Session
+
+    from .ports import RecognitionCache, RecognitionEndpoint
 
 MINIMUM_RETRY_SECONDS = 60
 
@@ -51,7 +54,7 @@ class GameRecognitionClient:
         cache = self._cache.load()
         results: list[GameRecognition] = []
         unresolved: list[GameIdentity] = []
-        for identity in unique_identities(cast(list[object], identities)):
+        for identity in unique_identities(cast("list[object]", identities)):
             md5 = identity["game_identity_md5"]
             cached = cached_recognition(md5, cache.get(md5), now)
             if cached is not None:
@@ -90,8 +93,9 @@ class GameRecognitionClient:
     ) -> tuple[GameRecognition | None, bool]:
         response = await self._endpoint.recognize(identity, token)
         if response.kind == "unreachable":
+            # Later identities would each wait out the same HTTP timeout.
             self._logger.error("Game recognition failed: unreachable")
-            return None, False
+            return None, True
         if response.kind == "unauthorized":
             await self._session.end_session(token)
             return None, True

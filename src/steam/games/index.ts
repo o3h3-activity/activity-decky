@@ -1,8 +1,13 @@
-import { recognizeGames } from "@api/catalog";
+import {
+	RECOGNITION_BATCH_SIZE,
+	recognizeGameBatch,
+	recognizeGames,
+} from "@api/catalog";
 import { LifetimeScope } from "@steam/lifetimeScope";
 import type { SessionResource } from "@steam/sessionLifecycle";
+import type { GameSyncListener, GameSyncProgress } from "@stores/gameSync";
 import logger from "@utils/logger";
-import { isNil } from "es-toolkit";
+import { chunk, isNil } from "es-toolkit";
 import { Game, type GameRelease } from "./game";
 import { Identity } from "./identity";
 
@@ -17,6 +22,9 @@ export class Games implements SessionResource {
 	private readonly nonGames = new Set<number>();
 	private readonly loading = new Map<number, Promise<void>>();
 	private queuedBatch: undefined | { appIds: number[]; promise: Promise<void> };
+	private syncing: Promise<GameSyncProgress> | undefined;
+	private syncProgress: GameSyncProgress | undefined;
+	private readonly syncListeners = new Set<GameSyncListener>();
 
 	constructor(private readonly identity: Identity = new Identity()) {
 		this.scope.addDisposer(() => {
@@ -71,6 +79,31 @@ export class Games implements SessionResource {
 		const recognised = await this.recognise(game);
 
 		return recognised.release;
+	}
+
+	/**
+	 * Asks Activity about every identified game on this device, `RECOGNITION_BATCH_SIZE` per request,
+	 * once shortcut discovery finishes. `onProgress` hears the total first, then each sent batch.
+	 * Overlapping calls share one sync, and a late caller first hears its latest progress. Rejects when
+	 * Steam's shortcut list is unavailable, discovery is incomplete, a batch fails, or the session ends;
+	 * answers from successfully discovered games are kept.
+	 */
+	async sync(onProgress?: GameSyncListener): Promise<GameSyncProgress> {
+		if (!isNil(onProgress)) {
+			this.syncListeners.add(onProgress);
+
+			if (!isNil(this.syncProgress)) {
+				onProgress(this.syncProgress);
+			}
+		}
+
+		this.syncing ??= this.syncAll().finally(() => {
+			this.syncing = undefined;
+			this.syncProgress = undefined;
+			this.syncListeners.clear();
+		});
+
+		return this.syncing;
 	}
 
 	unMount(): void {
@@ -146,6 +179,77 @@ export class Games implements SessionResource {
 			}
 		} catch (error: unknown) {
 			logger.error("[Games] Failed to identify games", error);
+		}
+	}
+
+	private async syncAll(): Promise<GameSyncProgress> {
+		const appIds = this.identity.shortcutAppIds();
+
+		if (isNil(appIds)) {
+			throw new Error("Steam's shortcut list is unavailable");
+		}
+
+		await this.load(appIds);
+		this.scope.signal.throwIfAborted();
+
+		const hasDiscoveryFailures = appIds.some(
+			(appId) => !this.games.has(appId) && !this.nonGames.has(appId),
+		);
+
+		const identified = [...this.games.values()].filter(
+			(game) => !isNil(game.disc),
+		);
+		const batches = chunk(identified, RECOGNITION_BATCH_SIZE);
+		let progress: GameSyncProgress = {
+			answered: 0,
+			batch: 0,
+			batches: batches.length,
+			sent: 0,
+			total: identified.length,
+		};
+
+		this.reportSync(progress);
+
+		for (const batch of batches) {
+			const answers = await recognizeGameBatch(
+				batch.flatMap((game) => game.disc?.toResult(game.appId) ?? []),
+			);
+
+			this.scope.signal.throwIfAborted();
+
+			let { answered } = progress;
+
+			for (const game of batch) {
+				const answeredGame = game.answeredBy(answers);
+
+				if (answeredGame !== game) {
+					answered += 1;
+					this.games.set(game.appId, answeredGame);
+				}
+			}
+
+			progress = {
+				...progress,
+				answered,
+				batch: progress.batch + 1,
+				sent: progress.sent + batch.length,
+			};
+
+			this.reportSync(progress);
+		}
+
+		if (hasDiscoveryFailures) {
+			throw new Error("Could not discover every Steam shortcut");
+		}
+
+		return progress;
+	}
+
+	private reportSync(progress: GameSyncProgress): void {
+		this.syncProgress = progress;
+
+		for (const listener of this.syncListeners) {
+			listener(progress);
 		}
 	}
 

@@ -14,6 +14,7 @@ class DeviceAuthorizationState(TypedDict):
     accessTokensUrl: str
     codeExpiresAt: int
     message: str
+    retroAchievementsCredentialSync: bool
     retroAchievementsLinked: bool
     status: DeviceAuthorizationStatus
     tokenExpiresAt: str
@@ -56,6 +57,7 @@ class ApprovedToken:
 
     token: str
     expires_at: str
+    retro_achievements_credential_sync: bool
     retro_achievements: RetroAchievementsCredentials | None = field(
         default=None, repr=False
     )
@@ -134,3 +136,25 @@ class CurrentUserFailure:
 
 
 CurrentUserResult = CurrentUserSuccess | CurrentUserFailure
+
+
+@dataclass(frozen=True, slots=True)
+class RetroAchievementsCredentialSyncSuccess:
+    """A valid current RetroAchievements credential snapshot."""
+
+    retro_achievements: RetroAchievementsCredentials | None = field(repr=False)
+    http_status: int
+    kind: Literal["loaded"] = field(init=False, default="loaded")
+
+
+@dataclass(frozen=True, slots=True)
+class RetroAchievementsCredentialSyncFailure:
+    """A credential-sync outcome without a validated credential snapshot."""
+
+    kind: Literal["rejected", "forbidden", "invalid", "unavailable"]
+    http_status: int | None = None
+
+
+RetroAchievementsCredentialSyncResult = (
+    RetroAchievementsCredentialSyncSuccess | RetroAchievementsCredentialSyncFailure
+)

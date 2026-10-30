@@ -28,14 +28,17 @@ vi.mock(
 	() => ({ default: { error: boundary.logError } }) as never,
 );
 
-const { getDeviceAuthorization, onDeviceAuthorizationChanged } = await import(
-	"./account"
-);
+const {
+	getDeviceAuthorization,
+	onDeviceAuthorizationChanged,
+	syncRetroAchievementsCredentials,
+} = await import("./account");
 
 const valid: DeviceAuthorizationState = {
 	accessTokensUrl: "https://activity.example/tokens",
 	codeExpiresAt: 0,
 	message: "",
+	retroAchievementsCredentialSync: false,
 	retroAchievementsLinked: false,
 	status: "pending",
 	tokenExpiresAt: "",
@@ -55,6 +58,10 @@ const malformed: [string, unknown][] = [
 		"a non-boolean RetroAchievements link",
 		{ ...valid, retroAchievementsLinked: 0 },
 	],
+	[
+		"a non-boolean RetroAchievements credential-sync permission",
+		{ ...valid, retroAchievementsCredentialSync: 0 },
+	],
 ];
 
 afterEach(() => {
@@ -67,6 +74,15 @@ describe("device authorization boundary validation", () => {
 		boundary.request.mockResolvedValue(valid);
 
 		expect(await getDeviceAuthorization()).toEqual(valid);
+	});
+
+	it("validates the credential refresh snapshot without exposing credentials", async () => {
+		boundary.request.mockResolvedValue(valid);
+
+		await expect(syncRetroAchievementsCredentials()).resolves.toEqual(valid);
+		expect(boundary.request).toHaveBeenCalledWith(
+			"sync_retro_achievements_credentials",
+		);
 	});
 
 	it.each(malformed)("rejects %s as a failed RPC", async (_, payload) => {

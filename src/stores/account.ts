@@ -9,6 +9,7 @@ import {
 	onDeviceAuthorizationChanged,
 	signOutActivity,
 	startDeviceAuthorization,
+	syncRetroAchievementsCredentials,
 } from "@api/account";
 import { batch, observable } from "@legendapp/state";
 import { navigateTo, ROUTES } from "@pages/routes";
@@ -114,7 +115,10 @@ async function loadProfile(announceSignIn: boolean): Promise<void> {
 	}
 }
 
-function applySnapshot(next: DeviceAuthorizationState): void {
+function applySnapshot(
+	next: DeviceAuthorizationState,
+	refreshCredentials = true,
+): void {
 	const previousStatus = accountStore.authorization.peek()?.status;
 
 	snapshotVersion += 1;
@@ -133,6 +137,27 @@ function applySnapshot(next: DeviceAuthorizationState): void {
 
 	if (previousStatus !== "signedIn") {
 		void loadProfile(isSignInInProgress(previousStatus));
+
+		if (refreshCredentials) {
+			const requestVersion = snapshotVersion;
+
+			void (async () => {
+				try {
+					const current = await syncRetroAchievementsCredentials();
+
+					if (isLive() && requestVersion === snapshotVersion) {
+						applySnapshot(current, false);
+					}
+				} catch (error: unknown) {
+					if (isLive()) {
+						logger.error(
+							"[activity] Could not refresh RetroAchievements credentials",
+							error,
+						);
+					}
+				}
+			})();
+		}
 	}
 }
 

@@ -56,6 +56,7 @@ const SIGNED_OUT_STATE: DeviceAuthorizationState = {
 	codeExpiresAt: 0,
 	message: "",
 	retroAchievementsLinked: false,
+	retroAchievementsCredentialSync: false,
 	status: "signedOut",
 	tokenExpiresAt: "",
 	userCode: "",

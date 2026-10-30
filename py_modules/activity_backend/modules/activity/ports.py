@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
-from typing import Protocol
+from typing import TYPE_CHECKING, Protocol
 
-from .playtime import PendingPlaytime, PlaytimeLedger, PlaytimeRequest
-from .results import EndpointResult
-from .validation import ActivityQuery, CommentPayload
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+    from .playtime import RecordPlaytimeSession
+    from .results import EndpointResult
+    from .validation import ActivityQuery, CommentPayload
 
 
 class ActivityEndpoint(Protocol):
@@ -17,13 +20,19 @@ class ActivityEndpoint(Protocol):
         ...
 
     async def get_friends_gameplay(
-        self,
-        game_id: str,
-        release_id: str,
-        release_revision_id: str,
-        token: str,
+        self, game_id: str, release_id: str, release_revision_id: str, token: str
     ) -> EndpointResult:
         """Request friends' gameplay for one release version of a game."""
+        ...
+
+    async def get_profile_games(
+        self, after: str | None, limit: int | None, token: str
+    ) -> EndpointResult:
+        """List authenticated profile games, optionally after one opaque cursor."""
+        ...
+
+    async def get_recent_playtime(self, token: str) -> EndpointResult:
+        """List authenticated recent playtime."""
         ...
 
     async def post_comment(self, payload: CommentPayload, token: str) -> EndpointResult:
@@ -38,77 +47,14 @@ class ActivityEndpoint(Protocol):
         comment_id: str,
         token: str,
     ) -> EndpointResult:
-        """Delete one comment of one release revision of one game."""
+        """Delete one comment of one release revision."""
         ...
 
-    async def replace_playtime(
-        self,
-        game_id: str,
-        release_id: str,
-        release_revision_id: str,
-        date: str,
-        seconds: int,
-        token: str,
+    async def record_playtime(
+        self, sessions: Sequence[RecordPlaytimeSession], token: str
     ) -> EndpointResult:
-        """Replace one authenticated user's UTC-day playtime total."""
+        """Atomically add one bounded additive playtime batch."""
         ...
 
 
-class PlaytimeTotals(Protocol):
-    """Persist one account's release-version day totals and interval identities."""
-
-    def load(
-        self,
-        account_id: str,
-        game_id: str,
-        release_id: str,
-        release_revision_id: str,
-    ) -> PlaytimeLedger:
-        """Load the durable ledger for one account and release version."""
-        ...
-
-    def save(
-        self,
-        account_id: str,
-        game_id: str,
-        release_id: str,
-        release_revision_id: str,
-        ledger: PlaytimeLedger,
-    ) -> None:
-        """Replace the durable ledger for one account and release version."""
-        ...
-
-
-class PendingPlaytimeStore(Protocol):
-    """Persist unresolved committed intervals owned by Steam account."""
-
-    def load(self, steam_id: str) -> list[PendingPlaytime]:
-        """Load one Steam account's unresolved intervals."""
-        ...
-
-    def enqueue(
-        self, steam_id: str, app_id: int, started_at: int, ended_at: int
-    ) -> bool:
-        """Persist one exact interval unless already queued or acknowledged; True if new."""
-        ...
-
-    def bind(
-        self, steam_id: str, app_id: int, request: PlaytimeRequest
-    ) -> PlaytimeRequest | None:
-        """Queue the interval if absent; return its first bound identity, None if uploaded."""
-        ...
-
-    def acknowledge(
-        self, steam_id: str, app_id: int, started_at: int, ended_at: int
-    ) -> None:
-        """Move one fully uploaded interval into the bounded acknowledged history."""
-        ...
-
-    def discard(
-        self, steam_id: str, app_id: int, started_at: int, ended_at: int
-    ) -> None:
-        """Drop one interval Activity permanently refused."""
-        ...
-
-
-__all__ = ["ActivityEndpoint", "PendingPlaytimeStore", "PlaytimeTotals"]
+__all__ = ["ActivityEndpoint"]

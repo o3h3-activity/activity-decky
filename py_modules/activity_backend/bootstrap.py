@@ -9,16 +9,14 @@ from activity_backend.infrastructure.settings import SETTINGS_FILE_NAME, Setting
 from activity_backend.modules.achievements.adapters.http import RetroAchievementsHttpApi
 from activity_backend.modules.achievements.api import RetroAchievementsClient
 from activity_backend.modules.activity.adapters.activity_api import ActivityApiEndpoint
-from activity_backend.modules.activity.adapters.pending_playtime import (
-    SettingsPendingPlaytime,
-)
 from activity_backend.modules.activity.adapters.playtime_sharing import (
     is_playtime_sharing_enabled,
 )
-from activity_backend.modules.activity.adapters.playtime_totals import (
-    SettingsPlaytimeTotals,
+from activity_backend.modules.activity.adapters.sqlite_playtime import (
+    SQLitePlaytimeOutbox,
 )
 from activity_backend.modules.activity.api import ActivityProxy
+from activity_backend.modules.activity.playtime_service import PlaytimeService
 from activity_backend.modules.authorization.adapters.decky_emitter import (
     DeckyAuthorizationEmitter,
 )
@@ -49,6 +47,7 @@ class Backend:
     authorization: DeviceAuthorizationClient
     catalog: GameRecognitionClient
     activity: ActivityProxy
+    playtime: PlaytimeService
     achievements: RetroAchievementsClient
 
 
@@ -80,12 +79,12 @@ def build_backend(
             authorization,
             logger,
         ),
-        activity=ActivityProxy(
+        activity=ActivityProxy(ActivityApiEndpoint(transport), authorization, logger),
+        playtime=PlaytimeService(
             ActivityApiEndpoint(transport),
             authorization,
             logger,
-            SettingsPlaytimeTotals(settings),
-            SettingsPendingPlaytime(settings),
+            SQLitePlaytimeOutbox(settings_directory / "playtime.sqlite3"),
             lambda: is_playtime_sharing_enabled(settings),
             authorization.get_user,
         ),

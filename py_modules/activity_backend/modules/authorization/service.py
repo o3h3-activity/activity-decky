@@ -25,7 +25,10 @@ MESSAGE_START_FAILED = "Could not start sign-in (HTTP {status})."
 MESSAGE_INVALID_RESPONSE = "The Activity API returned an unexpected response."
 MESSAGE_POLL_REJECTED = "The Activity API rejected the sign-in request."
 MESSAGE_POLL_UNEXPECTED = "Unexpected response from the Activity API (HTTP {status})."
-MESSAGE_TOKEN_LIMIT = "Your Activity account has too many access tokens. Revoke one at {url}; this code keeps waiting until it expires."  # noqa: S105 -- user-facing message, not a credential
+MESSAGE_TOKEN_LIMIT = (
+    "Your Activity account has too many access tokens. Revoke one "  # noqa: S105
+    "at {url}; this code keeps waiting until it expires."
+)
 MESSAGE_SESSION_ENDED = "Your Activity sign-in expired or was revoked. Sign in again."
 
 ACCESS_TOKENS_PAGE_PATH = "/settings/access-tokens"
@@ -60,6 +63,8 @@ class DeviceAuthorizationClient:
         self._sleep: Callable[[float], Awaitable[None]] = sleep
         self._wall_clock: Callable[[], float] = wall_clock
         self._task: asyncio.Task[None] | None = None
+        self._credential_sync_task: asyncio.Task[DeviceAuthorizationState] | None = None
+        self._shutting_down: bool = False
         self._lifecycle_lock: asyncio.Lock = asyncio.Lock()
         self._authorization_generation: int = 0
         self._start_retry_deadline: float = 0.0
@@ -88,6 +93,8 @@ class DeviceAuthorizationClient:
             "accessTokensUrl": "",
             "codeExpiresAt": 0,
             "message": message,
+            "retroAchievementsCredentialSync": bool(token)
+            and self._token_store.retro_achievements_credential_sync_permitted(),
             "retroAchievementsLinked": bool(token)
             and self.retro_achievements_credentials() is not None,
             "status": status,
@@ -106,6 +113,7 @@ class DeviceAuthorizationClient:
             "accessTokensUrl": "",
             "codeExpiresAt": 0,
             "message": message,
+            "retroAchievementsCredentialSync": False,
             "retroAchievementsLinked": False,
             "status": status,
             "tokenExpiresAt": "",
@@ -123,6 +131,7 @@ class DeviceAuthorizationClient:
             "accessTokensUrl": _access_tokens_url(started.verification_uri),
             "codeExpiresAt": code_expires_at,
             "message": message,
+            "retroAchievementsCredentialSync": False,
             "retroAchievementsLinked": False,
             "status": "pending",
             "tokenExpiresAt": "",
@@ -143,6 +152,63 @@ class DeviceAuthorizationClient:
         if self._state["status"] == "signedIn":
             self._state = self._idle_state(self._state["message"])
         return self._state.copy()
+
+    async def sync_retro_achievements_credentials(self) -> DeviceAuthorizationState:
+        """Refresh permitted linked credentials without exposing them."""
+        async with self._lifecycle_lock:
+            if self._shutting_down:
+                return self._state.copy()
+            task = self._credential_sync_task
+            if task is None or task.done():
+                task = asyncio.create_task(
+                    self._refresh_retro_achievements_credentials()
+                )
+                self._credential_sync_task = task
+        return await asyncio.shield(task)
+
+    async def _refresh_retro_achievements_credentials(
+        self,
+    ) -> DeviceAuthorizationState:
+        """Fetch permitted credentials and apply them if the token is still current."""
+        async with self._lifecycle_lock:
+            token = self.access_token()
+            if token is None and self._state["status"] == "signedIn":
+                await self._set_state(self._idle_state(""))
+            generation = self._authorization_generation
+            permitted = (
+                token is not None
+                and self._token_store.retro_achievements_credential_sync_permitted()
+            )
+        if not token or not permitted:
+            return self.get_state()
+
+        result = await self._endpoint.sync_retro_achievements_credentials(token)
+        async with self._lifecycle_lock:
+            if (
+                generation != self._authorization_generation
+                or not self._token_store.matches(token)
+            ):
+                return self.get_state()
+            if result.kind == "loaded":
+                if self._token_store.update_retro_achievements_credentials(
+                    token, True, result.retro_achievements
+                ):
+                    await self._set_state(self._idle_state(""))
+                return self.get_state()
+            if result.kind == "rejected":
+                await self._end_session_locked()
+                return self.get_state()
+            if result.kind == "forbidden":
+                if self._token_store.update_retro_achievements_credentials(
+                    token, False, None
+                ):
+                    await self._set_state(self._idle_state(""))
+                return self.get_state()
+        self._logger.error(
+            "Could not refresh RetroAchievements credentials (status=%s)",
+            result.http_status,
+        )
+        return self.get_state()
 
     async def _cancel_task(self) -> None:
         """Cancel and drain polling without changing visible state."""
@@ -206,10 +272,23 @@ class DeviceAuthorizationClient:
         await self._set_state(self._blank_state("signedOut", MESSAGE_SESSION_ENDED))
 
     async def shutdown(self) -> None:
-        """Cancel and drain polling during unload without emitting an event."""
+        """Stop refreshes and drain authorization work without emitting."""
         async with self._lifecycle_lock:
+            self._shutting_down = True
             self._authorization_generation += 1
+            task = self._credential_sync_task
+            self._credential_sync_task = None
+            if task is not None:
+                _ = task.cancel()
             await self._cancel_task()
+        if task is None:
+            return
+        try:
+            await task
+        except asyncio.CancelledError:
+            pass
+        except Exception:
+            self._logger.exception("Activity credential refresh failed during shutdown")
 
     async def _error(self, message: str) -> None:
         """Publish a terminal error state."""
@@ -330,11 +409,12 @@ class DeviceAuthorizationClient:
         await self._error(MESSAGE_INVALID_RESPONSE)
 
     async def _save_approved_token(self, approved_token: ApprovedToken) -> None:
-        """Persist an approved bearer token, expiry, and paired credentials."""
+        """Persist an approved bearer token, permission, and paired credentials."""
         async with self._lifecycle_lock:
             self._token_store.save(
                 approved_token.token,
                 approved_token.expires_at,
+                approved_token.retro_achievements_credential_sync,
                 approved_token.retro_achievements,
             )
             self._authorization_generation += 1

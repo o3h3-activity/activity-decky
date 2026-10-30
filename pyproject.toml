@@ -16,6 +16,7 @@ package = false
 [tool.ruff]
 target-version = "py311"
 line-length = 88
+unsafe-fixes = false
 include = ["main.py", "py_modules/**/*.py", "tests/**/*.py"]
 
 [tool.ruff.lint]
@@ -23,10 +24,16 @@ select = ["E4", "E7", "E9", "F", "I", "B", "UP", "ASYNC", "RUF", "S"]
 extend-select = [
     "A", "ARG", "C4", "DTZ", "FLY", "LOG", "N", "PERF", "PIE",
     "PLC", "PLE", "PLW", "RET", "PGH003", "PGH004", "C90",
+    "SIM", "T20", "RSE", "PLR0912", "PLR0915",
+    "D100", "D101", "D102", "D103", "E501", "TC",
 ]
 
 [tool.ruff.lint.mccabe]
 max-complexity = 10
+
+[tool.ruff.lint.pylint]
+max-branches = 12
+max-statements = 50
 
 [tool.ruff.lint.isort]
 known-first-party = ["activity_backend"]

@@ -52,15 +52,18 @@ class BackendTestCase(unittest.TestCase):
     """Provide isolated Decky settings and home paths for backend tests."""
 
     def setUp(self) -> None:
+        """Create an isolated temporary Decky filesystem."""
         self._temporary_directory = tempfile.TemporaryDirectory()
         self.path = Path(self._temporary_directory.name)
         decky.DECKY_USER_HOME = str(self.path)
         decky.DECKY_PLUGIN_SETTINGS_DIR = str(self.path / "settings")
 
     def tearDown(self) -> None:
+        """Remove the isolated temporary Decky filesystem."""
         self._temporary_directory.cleanup()
 
     def settings(self) -> SettingsStore:
+        """Return this test's isolated Activity settings store."""
         return SettingsStore(Path(decky.DECKY_PLUGIN_SETTINGS_DIR) / "activity.json")
 
 

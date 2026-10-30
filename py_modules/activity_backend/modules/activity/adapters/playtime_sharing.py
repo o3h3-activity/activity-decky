@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
-from activity_backend.shared import Settings
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from activity_backend.shared import Settings
 
 PLAY_TIME_SYNC_ENABLED_SETTING = "isPlayTimeSyncEnabled"
 

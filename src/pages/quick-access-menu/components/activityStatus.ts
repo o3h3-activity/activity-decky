@@ -29,9 +29,17 @@ export function retroAchievementsRow(
 		return { value: "Linked" };
 	}
 
+	if (authorization.retroAchievementsCredentialSync) {
+		return {
+			description:
+				"Link RetroAchievements to your Activity account. This Deck refreshes credentials automatically.",
+			value: "Not linked",
+		};
+	}
+
 	return {
 		description:
-			"Link RetroAchievements to your Activity account, then sign in again on this Deck.",
+			"This Deck is not permitted to sync RetroAchievements credentials.",
 		value: "Not linked",
 	};
 }

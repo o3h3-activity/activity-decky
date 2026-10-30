@@ -22,7 +22,7 @@ class RetroAchievementsHttpApi:
         )
         if not isinstance(payload, dict):
             return None
-        response = cast(dict[object, object], payload)
+        response = cast("dict[object, object]", payload)
         if response.get("Success") is not True:
             return None
         game_id = response.get("GameID")

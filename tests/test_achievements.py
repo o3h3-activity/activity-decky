@@ -29,6 +29,13 @@ class Session:
         """Keep the credentials currently available to the session."""
         self._credentials = credentials
 
+        self.sync_calls: int = 0
+
+    async def sync_retro_achievements_credentials(self) -> object:
+        """Model the authorization-owned credential refresh before progress work."""
+        self.sync_calls += 1
+        return {}
+
     def retro_achievements_credentials(self) -> RetroAchievementsCredentials | None:
         """Return session-issued credentials only while the session is valid."""
         return self._credentials
@@ -80,12 +87,12 @@ class RetroAchievementsTests(BackendTestCase, unittest.IsolatedAsyncioTestCase):
                 return {"Success": True, "GameID": 42}
             return {"ok": True}
 
-        with patch.object(GameAnatomyNativeOperations, "load", return_value=blueprint):
-            with patch.object(
-                ra_http, "request_json", side_effect=request_json
-            ) as request:
-                result = await client.get_progress("~/game.iso")
-                second_result = await client.get_progress("~/game.iso")
+        with (
+            patch.object(GameAnatomyNativeOperations, "load", return_value=blueprint),
+            patch.object(ra_http, "request_json", side_effect=request_json) as request,
+        ):
+            result = await client.get_progress("~/game.iso")
+            second_result = await client.get_progress("~/game.iso")
 
         self.assertEqual(result, {"ok": True})
         self.assertEqual(second_result, {"ok": True})
@@ -97,17 +104,19 @@ class RetroAchievementsTests(BackendTestCase, unittest.IsolatedAsyncioTestCase):
         )
 
     async def test_runtime_lookup_failure_is_cached_without_http_request(self) -> None:
-        """Cache game-anatomy RuntimeErrors as unresolved games without network calls."""
+        """Cache lookup failures without issuing network requests."""
         client = self.client(RetroAchievementsCredentials("user", "key"))
         rom = self.path / "game.iso"
         rom.write_bytes(b"rom")
         blueprint = MagicMock()
         blueprint.generate_hash.side_effect = RuntimeError("unrecognized")
 
-        with patch.object(GameAnatomyNativeOperations, "load", return_value=blueprint):
-            with patch.object(ra_http, "request_json") as request:
-                self.assertIsNone(await client.get_progress("~/game.iso"))
-                self.assertIsNone(await client.get_progress("~/game.iso"))
+        with (
+            patch.object(GameAnatomyNativeOperations, "load", return_value=blueprint),
+            patch.object(ra_http, "request_json") as request,
+        ):
+            self.assertIsNone(await client.get_progress("~/game.iso"))
+            self.assertIsNone(await client.get_progress("~/game.iso"))
 
         blueprint.generate_hash.assert_called_once_with(str(rom))
         request.assert_not_called()
@@ -116,30 +125,15 @@ class RetroAchievementsTests(BackendTestCase, unittest.IsolatedAsyncioTestCase):
         self,
     ) -> None:
         """Treat an invalid or expired Activity session as unconfigured."""
-        client = self.client()
-        with patch.object(GameAnatomyNativeOperations, "load") as load:
-            with patch.object(ra_http, "request_json") as request:
-                self.assertIsNone(await client.get_progress("~/game.iso"))
+        session = Session(None)
+        client = self.client_for(session)
+        with (
+            patch.object(GameAnatomyNativeOperations, "load") as load,
+            patch.object(ra_http, "request_json") as request,
+        ):
+            self.assertIsNone(await client.get_progress("~/game.iso"))
 
-        load.assert_not_called()
-        request.assert_not_called()
-
-    async def test_legacy_manual_credentials_are_not_a_session_fallback(self) -> None:
-        """Ignore a replaced account's old local credentials after its session ends."""
-        self.settings().update(
-            {
-                "retroAchievementsUsername": "manual-user",
-                "retroAchievementsApiKey": "manual-key",
-            }
-        )
-        client = self.client()
-        rom = self.path / "game.iso"
-        rom.write_bytes(b"rom")
-
-        with patch.object(GameAnatomyNativeOperations, "load") as load:
-            with patch.object(ra_http, "request_json") as request:
-                self.assertIsNone(await client.get_progress("~/game.iso"))
-
+        self.assertEqual(session.sync_calls, 1)
         load.assert_not_called()
         request.assert_not_called()
 
@@ -155,6 +149,7 @@ class RetroAchievementsTests(BackendTestCase, unittest.IsolatedAsyncioTestCase):
                     "accessToken": "pat_" + "0" * 64,
                     "tokenType": "Bearer",
                     "expiresAt": "2998-10-27T00:00:00+00:00",
+                    "retroAchievementsCredentialSync": False,
                     "retroAchievements": {
                         "userName": "issued-user",
                         "apiKey": "issued-key",
@@ -182,13 +177,13 @@ class RetroAchievementsTests(BackendTestCase, unittest.IsolatedAsyncioTestCase):
                 return {"Success": True, "GameID": 42}
             return {"ok": True}
 
-        with patch.object(GameAnatomyNativeOperations, "load", return_value=blueprint):
-            with patch.object(
-                ra_http, "request_json", side_effect=request_json
-            ) as request:
-                self.assertEqual(
-                    await plugin.get_retro_achievements("~/game.iso"), {"ok": True}
-                )
+        with (
+            patch.object(GameAnatomyNativeOperations, "load", return_value=blueprint),
+            patch.object(ra_http, "request_json", side_effect=request_json) as request,
+        ):
+            self.assertEqual(
+                await plugin.get_retro_achievements("~/game.iso"), {"ok": True}
+            )
 
         progress_url = request.call_args_list[1].args[0]
         self.assertEqual(
@@ -223,19 +218,21 @@ class RetroAchievementsTests(BackendTestCase, unittest.IsolatedAsyncioTestCase):
             }
 
         blueprint.generate_hash.side_effect = generate_hash
-        with patch.object(GameAnatomyNativeOperations, "load", return_value=blueprint):
-            with patch.object(
+        with (
+            patch.object(GameAnatomyNativeOperations, "load", return_value=blueprint),
+            patch.object(
                 ra_http,
                 "request_json",
                 return_value={"Success": True, "GameID": 42},
-            ) as request:
-                progress = asyncio.create_task(client.get_progress("~/game.iso"))
-                self.assertTrue(await asyncio.to_thread(identity_started.wait, 5))
-                session.set_credentials(
-                    RetroAchievementsCredentials("second-user", "second-key")
-                )
-                release_identity.set()
-                self.assertIsNone(await progress)
+            ) as request,
+        ):
+            progress = asyncio.create_task(client.get_progress("~/game.iso"))
+            self.assertTrue(await asyncio.to_thread(identity_started.wait, 5))
+            session.set_credentials(
+                RetroAchievementsCredentials("second-user", "second-key")
+            )
+            release_identity.set()
+            self.assertIsNone(await progress)
 
         self.assertEqual(
             [call.args[0] for call in request.call_args_list], [ra_http.RA_CONNECT_URL]
@@ -265,10 +262,12 @@ class RetroAchievementsTests(BackendTestCase, unittest.IsolatedAsyncioTestCase):
             _ = release_progress.wait(timeout=5)
             return {"ok": True}
 
-        with patch.object(GameAnatomyNativeOperations, "load", return_value=blueprint):
-            with patch.object(ra_http, "request_json", side_effect=request_json):
-                progress = asyncio.create_task(client.get_progress("~/game.iso"))
-                self.assertTrue(await asyncio.to_thread(progress_requested.wait, 5))
-                session.set_credentials(None)
-                release_progress.set()
-                self.assertIsNone(await progress)
+        with (
+            patch.object(GameAnatomyNativeOperations, "load", return_value=blueprint),
+            patch.object(ra_http, "request_json", side_effect=request_json),
+        ):
+            progress = asyncio.create_task(client.get_progress("~/game.iso"))
+            self.assertTrue(await asyncio.to_thread(progress_requested.wait, 5))
+            session.set_credentials(None)
+            release_progress.set()
+            self.assertIsNone(await progress)

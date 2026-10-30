@@ -26,7 +26,7 @@ class PluginTests(BackendTestCase, unittest.IsolatedAsyncioTestCase):
         )
 
     async def test_debug_preference_controls_backend_log_level(self) -> None:
-        """Enable backend DEBUG logs only while the preference is on, restoring it on startup."""
+        """Toggle backend debug logs and restore the saved preference."""
         self.addCleanup(decky.logger.setLevel, decky.logger.level)
         plugin = activity_main.Plugin()
 

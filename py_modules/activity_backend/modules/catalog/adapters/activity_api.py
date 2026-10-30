@@ -4,9 +4,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import replace
-from typing import cast
-
-from activity_backend.shared import ActivityTransport, Settings
+from typing import TYPE_CHECKING, cast
 
 from ..ports import RecognitionCache, RecognitionEndpoint
 from ..recognition import (
@@ -21,7 +19,11 @@ from ..recognition import (
     UnreachableRecognitionError,
 )
 
+if TYPE_CHECKING:
+    from activity_backend.shared import ActivityTransport, Settings
+
 GAME_RECOGNITIONS_SETTING = "gameRecognitions"
+
 GAME_RECOGNITION_PATH = "/api/v1/game-recognition"
 CATALOG_PLATFORMS = {
     "ps1": "playstation",
@@ -41,7 +43,7 @@ class SettingsRecognitionCache(RecognitionCache):
         raw_cache = self._settings.get(GAME_RECOGNITIONS_SETTING, object)
         if not isinstance(raw_cache, dict):
             return {}
-        serialized_cache = cast(dict[object, object], raw_cache)
+        serialized_cache = cast("dict[object, object]", raw_cache)
         cache: dict[str, RecognitionCacheEntry] = {}
         for md5, raw_entry in serialized_cache.items():
             if not isinstance(md5, str):
@@ -66,7 +68,7 @@ class SettingsRecognitionCache(RecognitionCache):
         """Decode one persisted entry, requiring a usable freshness timestamp."""
         if not isinstance(value, dict):
             return None
-        serialized = cast(dict[object, object], value)
+        serialized = cast("dict[object, object]", value)
         game_id = serialized.get("gameId")
         release_id = serialized.get("releaseId")
         release_revision_id = serialized.get("releaseRevisionId")
@@ -137,7 +139,7 @@ class ActivityCatalogEndpoint(RecognitionEndpoint):
     def _catalog_answer(payload: object) -> CatalogAnswer | InvalidRecognitionResponse:
         if not isinstance(payload, dict):
             return InvalidRecognitionResponse()
-        values = cast(dict[object, object], payload)
+        values = cast("dict[object, object]", payload)
         game_id = values.get("gameId")
         release_id = values.get("releaseId")
         release_revision_id = values.get("releaseRevisionId")

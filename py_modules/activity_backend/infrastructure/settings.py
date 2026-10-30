@@ -22,12 +22,12 @@ class SettingsStore:
     def _read(self) -> dict[str, object]:
         """Load settings, returning an empty mapping when the file is invalid."""
         try:
-            settings = cast(object, json.loads(self.path.read_text(encoding="utf-8")))
+            settings = cast("object", json.loads(self.path.read_text(encoding="utf-8")))
             if not isinstance(settings, dict):
                 raise ValueError("Settings must be a JSON object")
             decky.logger.debug("Loaded activity settings from %s", self.path)
             # JSON object keys are strings; values remain untrusted until get().
-            return cast(dict[str, object], settings)
+            return cast("dict[str, object]", settings)
         except (OSError, ValueError):
             decky.logger.debug("No readable activity settings found at %s", self.path)
             return {}

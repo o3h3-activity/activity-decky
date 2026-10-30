@@ -48,7 +48,7 @@ def validated_identity(info: object) -> GameIdentity | None:
     """Convert an untrusted game-anatomy result into a supported plugin identity."""
     if not isinstance(info, dict):
         return None
-    fields = cast(dict[object, object], info)
+    fields = cast("dict[object, object]", info)
     platform = fields.get("platform")
     game_identity_md5 = fields.get("identity_md5")
     rcheevos_id = fields.get("retroachievements_platform_id")

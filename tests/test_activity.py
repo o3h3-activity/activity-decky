@@ -10,12 +10,6 @@ from backend_support import BackendTestCase, decky, make_authorization
 from activity_backend.infrastructure import activity_transport as activity_api
 from activity_backend.modules.activity import api as activity_proxy
 from activity_backend.modules.activity.adapters.activity_api import ActivityApiEndpoint
-from activity_backend.modules.activity.adapters.pending_playtime import (
-    SettingsPendingPlaytime,
-)
-from activity_backend.modules.activity.adapters.playtime_totals import (
-    SettingsPlaytimeTotals,
-)
 from activity_backend.modules.authorization.adapters import token_store
 from activity_backend.shared import HttpJsonResponse
 
@@ -31,18 +25,14 @@ class ActivityProxyTests(BackendTestCase, unittest.IsolatedAsyncioTestCase):
         self.settings().update(
             {
                 token_store.ACCESS_TOKEN_SETTING: self.token,
-                token_store.ACCESS_TOKEN_EXPIRES_AT_SETTING: "2999-10-27T00:00:00+00:00",
+                token_store.ACCESS_TOKEN_EXPIRES_AT_SETTING: (
+                    "2999-10-27T00:00:00+00:00"
+                ),
             }
         )
         self.authorization = make_authorization(self.settings())
         self.proxy = activity_proxy.ActivityProxy(
-            ActivityApiEndpoint(self.api),
-            self.authorization,
-            decky.logger,
-            SettingsPlaytimeTotals(self.settings()),
-            SettingsPendingPlaytime(self.settings()),
-            lambda: True,
-            self.authorization.get_user,
+            ActivityApiEndpoint(self.api), self.authorization, decky.logger
         )
 
     @staticmethod
@@ -275,7 +265,7 @@ class ActivityProxyTests(BackendTestCase, unittest.IsolatedAsyncioTestCase):
     async def test_comments_failures_preserve_error_classification_and_session(
         self,
     ) -> None:
-        """Distinguish unavailable, HTTP, and malformed responses without signing out."""
+        """Distinguish failures without signing out."""
         for response, error, status in (
             (None, "unreachable", 0),
             (self._response(503, {"error": "unavailable"}), "httpError", 503),
@@ -295,3 +285,54 @@ class ActivityProxyTests(BackendTestCase, unittest.IsolatedAsyncioTestCase):
                     result, {"ok": False, "error": error, "status": status}
                 )
                 self.assertEqual(self.authorization.access_token(), self.token)
+
+    async def test_profile_games_preserves_response_data_and_cursor(self) -> None:
+        """Pass the opaque cursor and profile response through unchanged."""
+        body = {
+            "items": [{"gameId": "game", "title": "Game"}],
+            "nextCursor": "opaque-next",
+        }
+        with patch.object(
+            activity_api, "request_json_status", return_value=self._response(200, body)
+        ) as request:
+            result = await self.proxy.get_profile_games("opaque-after", 25)
+
+        self.assertEqual(result, {"ok": True, "data": body})
+        request.assert_called_once_with(
+            "https://activity.o3h3.com/api/v1/me/games?after=opaque-after&limit=25",
+            method="GET",
+            body=None,
+            bearer_token=self.token,
+        )
+
+    async def test_recent_playtime_preserves_response_data(self) -> None:
+        """Pass the recent playtime response through unchanged."""
+        body = {
+            "minutesPlayedLastTwoWeeks": 10,
+            "versions": [],
+            "versionsPlayedLastTwoWeeks": 0,
+        }
+        with patch.object(
+            activity_api, "request_json_status", return_value=self._response(200, body)
+        ) as request:
+            result = await self.proxy.get_recent_playtime()
+
+        self.assertEqual(result, {"ok": True, "data": body})
+        request.assert_called_once_with(
+            "https://activity.o3h3.com/api/v1/me/playtime/recent",
+            method="GET",
+            body=None,
+            bearer_token=self.token,
+        )
+
+    async def test_profile_games_401_ends_the_current_session(self) -> None:
+        """Profile reads use the existing authorization lifecycle."""
+        with patch.object(
+            activity_api,
+            "request_json_status",
+            return_value=self._response(401, {"error": "unauthorized"}),
+        ):
+            result = await self.proxy.get_profile_games()
+
+        self.assertEqual(result, {"ok": False, "error": "unauthorized", "status": 401})
+        self.assertIsNone(self.authorization.access_token())

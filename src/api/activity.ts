@@ -1,5 +1,10 @@
+import type { components } from "../../steam-deck-api";
 import { authorizationGate } from "./account";
 import { mutationRpc, rpc } from "./rpc/transport";
+
+export type ProfileGamesResponse = components["schemas"]["ProfileGamesResponse"];
+export type RecentPlaytimeResponse =
+	components["schemas"]["RecentPlaytimeResponse"];
 
 /** A durable committed interval; resolved identifiers are pinned before the first upload. */
 export type PendingPlaytime = Readonly<{
@@ -29,6 +34,14 @@ export const getFriendsGameplay = authorizationGate.guardResult(
 	"get_friends_gameplay",
 );
 
+/** Lists played or voted release versions from `/api/v1/me/games`, optionally after a cursor. */
+export const getProfileGames = authorizationGate.guardResult("get_profile_games");
+
+/** Gets recent release-version playtime from `/api/v1/me/playtime/recent`. */
+export const getRecentPlaytime = authorizationGate.guardResult(
+	"get_recent_playtime",
+);
+
 /**
  * Posts a `steam-bbcode` JSON comment to
  * `/api/v1/games/{gameId}/releases/{releaseId}/versions/{releaseVersionId}/comments`;
@@ -44,8 +57,8 @@ export const postComment = authorizationGate.guardMutation("post_comment");
 export const deleteComment = authorizationGate.guardMutation("delete_comment");
 
 /**
- * Uploads a queued interval for the matching Steam account, replacing persisted UTC daily totals.
- * The backend acknowledges the interval only after every affected day succeeds.
+ * Uploads a queued interval as additive UTC-day sessions. A `deliveryUnknown` response is already
+ * durably held by the backend and must not be retried because the server may have accepted it.
  */
 export const recordPlaytime =
 	authorizationGate.guardMutation("record_playtime");

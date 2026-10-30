@@ -137,25 +137,27 @@ class GameIdentityBatchTests(BackendTestCase, unittest.IsolatedAsyncioTestCase):
 
         changed_blueprint = MagicMock()
         changed_blueprint.generate_hash.return_value = identity
-        with patch.object(
-            plugin.backend.authorization,
-            "retro_achievements_credentials",
-            return_value=SimpleNamespace(username="user", api_key="key"),
-            create=True,
-        ):
-            with patch.object(
+        with (
+            patch.object(
+                plugin.backend.authorization,
+                "retro_achievements_credentials",
+                return_value=SimpleNamespace(username="user", api_key="key"),
+                create=True,
+            ),
+            patch.object(
                 GameAnatomyNativeOperations,
                 "load",
                 return_value=changed_blueprint,
-            ) as load:
-                with patch.object(ra_http, "request_json", side_effect=request_json):
-                    self.assertEqual(
-                        await plugin.get_retro_achievements("~/game.iso"), {"ok": True}
-                    )
-                    rom.write_bytes(b"changed")
-                    self.assertEqual(
-                        await plugin.get_retro_achievements("~/game.iso"), {"ok": True}
-                    )
+            ) as load,
+            patch.object(ra_http, "request_json", side_effect=request_json),
+        ):
+            self.assertEqual(
+                await plugin.get_retro_achievements("~/game.iso"), {"ok": True}
+            )
+            rom.write_bytes(b"changed")
+            self.assertEqual(
+                await plugin.get_retro_achievements("~/game.iso"), {"ok": True}
+            )
 
         load.assert_called_once_with()
         changed_blueprint.generate_hash.assert_called_once_with(str(rom))
@@ -163,7 +165,7 @@ class GameIdentityBatchTests(BackendTestCase, unittest.IsolatedAsyncioTestCase):
     async def test_retried_batch_joins_the_running_hash_of_an_uncached_rom(
         self,
     ) -> None:
-        """Hash a ROM once when a retry arrives while the abandoned batch still hashes it."""
+        """Reuse an in-flight hash when retrying an uncached ROM."""
         rom = self.path / "game.iso"
         rom.write_bytes(b"disc")
         identity = {

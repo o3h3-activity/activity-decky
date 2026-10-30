@@ -1,11 +1,13 @@
 import type { PendingPlaytime } from "@api/activity";
-import type { ApiFailure } from "@api/rpc/result";
+import type { ApiFailure, ApiResult } from "@api/rpc/result";
 import type { Games } from "@steam/games";
 import { hasActivityIdentifiers } from "@steam/games/game";
 import { LifetimeScope } from "@steam/lifetimeScope";
 import { Network } from "@steam/proxy/network";
+import { accountStore } from "@stores/account";
 import { isPlayTimeSharingActive } from "@stores/playTimeSync";
 import logger from "@utils/logger";
+import { canSharePlayTime } from "./policy";
 import type { ActivityIdentifiers, PlayTimeQueue } from "./queue";
 import { RetryTimer } from "./retryTimer";
 
@@ -14,12 +16,7 @@ const HTTP_SERVER_ERROR_MIN = 500;
 const HTTP_REQUEST_TIMEOUT = 408;
 const HTTP_TOO_MANY_REQUESTS = 429;
 
-/**
- * Only this interval failed, so later ones may still upload while it stays queued for the next
- * retry: `invalidRequest` means the catalog's identifiers are unusable until recognition changes,
- * and the other 4xx responses concern this request. Anything else (offline, 5xx, 408/429,
- * session loss, sharing disabled) would fail later intervals too: end the pass and back off.
- */
+/** A request-specific 4xx leaves later intervals eligible for this pass. */
 function affectsOnlyThisInterval({ error, status }: ApiFailure): boolean {
 	return (
 		error === "invalidRequest" ||
@@ -31,25 +28,22 @@ function affectsOnlyThisInterval({ error, status }: ApiFailure): boolean {
 	);
 }
 
-/**
- * One interval's outcome. `settled`: uploaded, or refused by Activity and discarded by the
- * backend, so nothing is left to retry. `deferred`: still queued, but later intervals may upload;
- * retry after a delay. `failed`: later intervals would fail too, so back off. `held`: signed in to
- * another Steam account's Activity profile, so the queue waits for its owner, whose sign-in toggles
- * sharing and so requests a flush. `aborted`: sharing stopped mid-pass.
- */
+/** One queue entry's delivery result. */
 type Delivery = "aborted" | "deferred" | "failed" | "held" | "settled";
 
-/** Sends one queue's intervals serially while sharing is active, retrying until it is empty. */
+/** Sends one Steam account's durable outbox serially while collection is permitted. */
 export class PlayTimeSync {
 	private readonly scope = new LifetimeScope("PlayTimeSync");
 	private readonly retryTimer = new RetryTimer();
 	private flushing = false;
 	private flushRequested = false;
+	private generation = 0;
+	private mounted = false;
 
 	constructor(
 		private readonly queue: PlayTimeQueue,
 		private readonly games: Games,
+		private readonly steamId: string,
 	) {}
 
 	readonly requestFlush = (): void => {
@@ -59,30 +53,48 @@ export class PlayTimeSync {
 
 		this.flushRequested = true;
 
-		if (this.flushing) {
-			return;
+		if (!this.flushing) {
+			this.flushing = true;
+			void this.flush();
 		}
-
-		this.flushing = true;
-		void this.flush();
 	};
 
-	/** Earlier failures say nothing about a new connection: retry now and restart the retry delay. */
+	/** A changed account may resolve an account-mismatch hold even if it remains signed in. */
+	private readonly onStateChanged = (): void => {
+		this.generation += 1;
+
+		if (this.canSync()) {
+			this.requestFlush();
+		} else {
+			this.retryTimer.cancel();
+		}
+	};
+
+	/** A fresh connection makes the old delay irrelevant. */
 	private readonly onReconnected = (): void => {
 		this.retryTimer.reset();
 		this.requestFlush();
 	};
 
 	mount(): void {
-		if (this.scope.signal.aborted) {
+		if (this.scope.signal.aborted || this.mounted) {
 			return;
 		}
 
+		this.mounted = true;
 		this.scope.addDisposer(() => {
 			this.retryTimer.cancel();
 		});
 
-		this.scope.addDisposer(isPlayTimeSharingActive.onChange(this.requestFlush));
+		this.scope.addDisposer(
+			isPlayTimeSharingActive.onChange(this.onStateChanged),
+		);
+
+		this.scope.addDisposer(
+			accountStore.authorization.onChange(this.onStateChanged),
+		);
+
+		this.scope.addDisposer(accountStore.profile.onChange(this.onStateChanged));
 		this.scope.addDisposer(Network.onReconnected(this.onReconnected));
 		this.requestFlush();
 	}
@@ -92,15 +104,21 @@ export class PlayTimeSync {
 	}
 
 	private canSync(): boolean {
-		return !this.scope.signal.aborted && isPlayTimeSharingActive.peek();
+		return !this.scope.signal.aborted && canSharePlayTime(this.steamId);
 	}
 
-	/**
-	 * Retries only while intervals stay queued; an emptied queue stops all polling. While Steam
-	 * reports no Internet, nothing is sent: the reconnect signal resumes at once, and the pending
-	 * retry only re-checks Steam's state, catching a Steam reconnect the probe did not report.
-	 */
+	private isCurrent(generation: number): boolean {
+		return generation === this.generation && this.canSync();
+	}
+
+	/** Runs one serial drain, preserving requests raised by commits during an in-flight upload. */
 	private async flush(): Promise<void> {
+		if (!this.canSync()) {
+			this.flushing = false;
+
+			return;
+		}
+
 		if (Network.isOnline() === false) {
 			this.flushRequested = false;
 			this.flushing = false;
@@ -115,9 +133,15 @@ export class PlayTimeSync {
 		try {
 			settled = await this.drain();
 		} catch (error: unknown) {
-			logger.error("[PlayTime] Failed to sync pending intervals", error);
+			if (this.canSync()) {
+				logger.error("[PlayTime] Failed to read pending intervals", error);
+			}
 		} finally {
 			this.flushing = false;
+		}
+
+		if (!this.canSync()) {
+			return;
 		}
 
 		if (this.flushRequested) {
@@ -135,20 +159,23 @@ export class PlayTimeSync {
 		}
 	}
 
-	/**
-	 * One upload at a time; a commit arriving during a pass requests another snapshot.
-	 * Resolves whether polling may stop: the last snapshot left nothing a retry could deliver.
-	 */
+	/** Resolves whether all intervals in the last snapshot were settled. */
 	private async drain(): Promise<boolean> {
 		let settled = true;
 
 		while (this.flushRequested && this.canSync()) {
 			this.flushRequested = false;
-			settled = true;
+			const generation = this.generation;
 			const intervals = await this.queue.pending();
 
+			if (!this.isCurrent(generation)) {
+				return false;
+			}
+
+			settled = true;
+
 			for (const interval of intervals) {
-				const delivery = await this.deliver(interval);
+				const delivery = await this.deliver(interval, generation);
 
 				if (delivery === "held") {
 					return true;
@@ -167,14 +194,30 @@ export class PlayTimeSync {
 		return settled;
 	}
 
-	private async deliver(interval: PendingPlaytime): Promise<Delivery> {
-		if (!this.canSync()) {
+	private async deliver(
+		interval: PendingPlaytime,
+		generation: number,
+	): Promise<Delivery> {
+		if (!this.isCurrent(generation)) {
 			return "aborted";
 		}
 
-		const identifiers = await this.identifiers(interval);
+		let identifiers: ActivityIdentifiers | undefined;
 
-		if (!this.canSync()) {
+		try {
+			identifiers = await this.identifiers(interval);
+		} catch (error: unknown) {
+			if (this.isCurrent(generation)) {
+				logger.error(
+					"[PlayTime] Failed to resolve interval identifiers",
+					error,
+				);
+			}
+
+			return this.isCurrent(generation) ? "deferred" : "aborted";
+		}
+
+		if (!this.isCurrent(generation)) {
 			return "aborted";
 		}
 
@@ -182,9 +225,31 @@ export class PlayTimeSync {
 			return "deferred";
 		}
 
-		const result = await this.queue.upload(interval, identifiers);
+		return this.upload(interval, identifiers, generation);
+	}
 
-		if (result.ok) {
+	private async upload(
+		interval: PendingPlaytime,
+		identifiers: ActivityIdentifiers,
+		generation: number,
+	): Promise<Delivery> {
+		let result: ApiResult;
+
+		try {
+			result = await this.queue.upload(interval, identifiers);
+		} catch (error: unknown) {
+			if (this.isCurrent(generation)) {
+				logger.error("[PlayTime] Failed to record interval", error);
+			}
+
+			return this.isCurrent(generation) ? "failed" : "aborted";
+		}
+
+		if (!this.isCurrent(generation)) {
+			return "aborted";
+		}
+
+		if (result.ok || result.error === "deliveryUnknown") {
 			return "settled";
 		}
 
@@ -194,14 +259,10 @@ export class PlayTimeSync {
 			return "held";
 		}
 
-		if (result.error === "refused") {
-			return "settled";
-		}
-
 		return affectsOnlyThisInterval(result) ? "deferred" : "failed";
 	}
 
-	/** Pinned identifiers win, so a shortcut that is no longer recognized still replays. */
+	/** Pinned bindings survive a shortcut that is no longer available for recognition. */
 	private async identifiers(
 		interval: PendingPlaytime,
 	): Promise<ActivityIdentifiers | undefined> {

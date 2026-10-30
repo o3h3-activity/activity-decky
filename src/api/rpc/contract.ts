@@ -2,6 +2,7 @@ import type { ActivityUser } from "../account";
 import type { PendingPlaytime } from "../activity";
 import type { GameRecognitionResult } from "../catalog";
 import type { GameIdentityRequest, GameIdentityResult } from "../discIdentity";
+import type { components } from "../../../steam-deck-api";
 import type { ApiResult } from "./result";
 
 /** Safe to abandon at a deadline: repeating it changes nothing the user can see. */
@@ -55,6 +56,14 @@ export type RpcContract = {
 	>;
 	get_pending_playtime: Query<[steamId: string], PendingPlaytime[]>;
 	get_play_time_sync_enabled: Query<[], boolean>;
+	get_profile_games: Query<
+		[after?: null | string, limit?: null | number],
+		ApiResult<components["schemas"]["ProfileGamesResponse"]>
+	>;
+	get_recent_playtime: Query<
+		[],
+		ApiResult<components["schemas"]["RecentPlaytimeResponse"]>
+	>;
 	get_retro_achievements: Query<[romPath: string], unknown>;
 	post_comment: Mutation<
 		[
@@ -85,6 +94,7 @@ export type RpcContract = {
 	set_play_time_sync_enabled: Mutation<[enabled: boolean], void>;
 	sign_out_activity: Mutation<[], unknown>;
 	start_device_authorization: Mutation<[], unknown>;
+	sync_retro_achievements_credentials: Mutation<[], unknown>;
 };
 
 export type RpcName = keyof RpcContract;

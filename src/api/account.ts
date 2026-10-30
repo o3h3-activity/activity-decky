@@ -23,7 +23,9 @@ export type DeviceAuthorizationState = {
 	/** Wall-clock epoch milliseconds when the pending sign-in code expires, or 0 without one. */
 	codeExpiresAt: number;
 	message: string;
-	/** The signed-in session carries RetroAchievements credentials; the credentials stay in the backend. */
+	/** Whether this Deck may refresh RetroAchievements credentials for the signed-in Activity account. */
+	retroAchievementsCredentialSync: boolean;
+	/** The signed-in session currently carries RetroAchievements credentials; they stay in the backend. */
 	retroAchievementsLinked: boolean;
 	status: DeviceAuthorizationStatus;
 	tokenExpiresAt: string;
@@ -64,6 +66,7 @@ function isDeviceAuthorizationState(
 	return (
 		STATUSES.has(candidate.status) &&
 		typeof candidate.codeExpiresAt === "number" &&
+		typeof candidate.retroAchievementsCredentialSync === "boolean" &&
 		typeof candidate.retroAchievementsLinked === "boolean" &&
 		STRING_FIELDS.every((field) => typeof candidate[field] === "string")
 	);
@@ -77,6 +80,7 @@ function authorizationRpc(
 		| "get_device_authorization"
 		| "sign_out_activity"
 		| "start_device_authorization"
+		| "sync_retro_achievements_credentials"
 	>,
 ): () => Promise<DeviceAuthorizationState> {
 	const request =
@@ -106,6 +110,11 @@ export const cancelDeviceAuthorization = authorizationRpc(
 );
 
 export const signOutActivity = authorizationRpc("sign_out_activity");
+
+/** Refreshes backend-held RetroAchievements credentials without exposing them to Decky. */
+export const syncRetroAchievementsCredentials = authorizationRpc(
+	"sync_retro_achievements_credentials",
+);
 
 /** Forwards each valid backend snapshot; malformed events are logged and dropped. */
 export function onDeviceAuthorizationChanged(

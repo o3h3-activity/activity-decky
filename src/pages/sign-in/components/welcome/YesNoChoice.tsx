@@ -3,40 +3,46 @@
 import { Focusable } from "@decky/ui";
 import type { ReactElement } from "react";
 
-const OPTIONS = [
-	{ description: "Send each finished session", label: "Yes", value: true },
-	{ description: "Keep it on this Deck", label: "No", value: false },
-] as const;
-
-type PlayTimeSyncChoiceProps = Readonly<{
+type YesNoChoiceProps = Readonly<{
 	disabled: boolean;
-	isEnabled: boolean;
-	onChange: (enabled: boolean) => void;
+	/** Unique per page; labels the radio group. */
+	id: string;
+	noDescription: string;
+	onChange: (isYes: boolean) => void;
+	question: string;
+	value: boolean;
+	yesDescription: string;
 }>;
 
 /** Gamepad-friendly Yes/No radio cards: A selects the focused card. */
-export function PlayTimeSyncChoice({
+export function YesNoChoice({
 	disabled,
-	isEnabled,
+	id,
+	noDescription,
 	onChange,
-}: PlayTimeSyncChoiceProps): ReactElement {
+	question,
+	value,
+	yesDescription,
+}: YesNoChoiceProps): ReactElement {
+	const options = [
+		{ description: yesDescription, label: "Yes", isYes: true },
+		{ description: noDescription, label: "No", isYes: false },
+	] as const;
+
 	return (
 		<div className="flex flex-col gap-2">
-			<p
-				className="m-0 text-sm leading-5 font-semibold text-white"
-				id="play-time-sync-question"
-			>
-				Use PlayTime to send my play time to Activity?
+			<p className="m-0 text-sm leading-5 font-semibold text-white" id={id}>
+				{question}
 			</p>
 
 			<Focusable
-				aria-labelledby="play-time-sync-question"
+				aria-labelledby={id}
 				className="grid grid-cols-2 gap-2"
 				flow-children="horizontal"
 				role="radiogroup"
 			>
-				{OPTIONS.map(({ description, label, value }) => {
-					const isSelected = value === isEnabled;
+				{options.map(({ description, isYes, label }) => {
+					const isSelected = isYes === value;
 
 					return (
 						<Focusable
@@ -50,11 +56,11 @@ export function PlayTimeSyncChoice({
 							noFocusRing
 							onActivate={() => {
 								if (!disabled) {
-									onChange(value);
+									onChange(isYes);
 								}
 							}}
 							onOKActionDescription="Select"
-							// D-pad users start on the current answer, not on Done.
+							// D-pad users start on the current answer, not on the primary button.
 							preferredFocus={isSelected}
 							role="radio"
 						>

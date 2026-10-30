@@ -9,6 +9,7 @@ from .models import (
     DevicePollResult,
     DeviceStartResult,
     RetroAchievementsCredentials,
+    RetroAchievementsCredentialSyncResult,
 )
 
 
@@ -27,9 +28,23 @@ class TokenStore(Protocol):
         self,
         token: str,
         expires_at: str,
+        retro_achievements_credential_sync: bool,
         retro_achievements: RetroAchievementsCredentials | None = None,
     ) -> None:
-        """Persist a token, expiry, and paired credentials atomically."""
+        """Persist a token, expiry, permission, and paired credentials atomically."""
+        ...
+
+    def retro_achievements_credential_sync_permitted(self) -> bool:
+        """Return whether the current usable session permits credential sync."""
+        ...
+
+    def update_retro_achievements_credentials(
+        self,
+        token: str,
+        retro_achievements_credential_sync: bool,
+        retro_achievements: RetroAchievementsCredentials | None,
+    ) -> bool:
+        """Atomically replace current-token credentials if the token stays current."""
         ...
 
     def retro_achievements_credentials(self) -> RetroAchievementsCredentials | None:
@@ -70,6 +85,12 @@ class DeviceAuthorizationEndpoint(Protocol):
 
     async def get_user(self, token: str) -> CurrentUserResult:
         """Load the current user with a specific credential."""
+        ...
+
+    async def sync_retro_achievements_credentials(
+        self, token: str
+    ) -> RetroAchievementsCredentialSyncResult:
+        """Load current RetroAchievements credentials for a permitted session."""
         ...
 
 

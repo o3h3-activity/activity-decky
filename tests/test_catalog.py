@@ -28,7 +28,9 @@ class GameRecognitionTests(BackendTestCase, unittest.IsolatedAsyncioTestCase):
         self.settings().update(
             {
                 token_store.ACCESS_TOKEN_SETTING: self.token,
-                token_store.ACCESS_TOKEN_EXPIRES_AT_SETTING: "2999-10-27T00:00:00+00:00",
+                token_store.ACCESS_TOKEN_EXPIRES_AT_SETTING: (
+                    "2999-10-27T00:00:00+00:00"
+                ),
             }
         )
         self.session = make_authorization(self.settings())
@@ -368,6 +370,21 @@ class GameRecognitionTests(BackendTestCase, unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result, [])
         request.assert_called_once()
         self.assertIsNone(self.session.access_token())
+
+    async def test_unreachable_catalog_stops_the_batch_without_caching(self) -> None:
+        """An outage costs one request timeout, and leaves every identity retryable."""
+        second = {**self.identity, "game_identity_md5": "b" * 32}
+        with patch.object(
+            activity_api,
+            "request_json_status",
+            side_effect=[None, HttpJsonResponse(200, self.catalog, 0)],
+        ) as request:
+            first = await self.client.recognize([self.identity, second])
+            recovered = await self.client.recognize([self.identity])
+
+        self.assertEqual(first, [])
+        self.assertEqual(recovered, [self.answer()])
+        self.assertEqual(request.call_count, 2)
 
     async def test_recognition_finishing_after_sign_out_does_not_restore_cache(
         self,

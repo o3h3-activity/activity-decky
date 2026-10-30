@@ -12,8 +12,9 @@ from ..models import RetroAchievementsCredentials
 ACCESS_TOKEN_SETTING = "activityAccessToken"  # noqa: S105 -- settings key, not a secret
 ACCESS_TOKEN_EXPIRES_AT_SETTING = "activityAccessTokenExpiresAt"  # noqa: S105
 ACTIVITY_RETRO_ACHIEVEMENTS_SETTING = "activityRetroAchievements"
-LEGACY_RETRO_ACHIEVEMENTS_USERNAME_SETTING = "retroAchievementsUsername"
-LEGACY_RETRO_ACHIEVEMENTS_API_KEY_SETTING = "retroAchievementsApiKey"
+ACTIVITY_RETRO_ACHIEVEMENTS_CREDENTIAL_SYNC_SETTING = (
+    "activityRetroAchievementsCredentialSync"
+)
 
 
 class SettingsTokenStore:
@@ -53,7 +54,7 @@ class SettingsTokenStore:
         serialized = self._settings.get(ACTIVITY_RETRO_ACHIEVEMENTS_SETTING, object)
         if not isinstance(serialized, dict):
             return None
-        values = cast(dict[object, object], serialized)
+        values = cast("dict[object, object]", serialized)
         username = values.get("userName")
         api_key = values.get("apiKey")
         if not (
@@ -65,29 +66,64 @@ class SettingsTokenStore:
             return None
         return RetroAchievementsCredentials(username, api_key)
 
+    def retro_achievements_credential_sync_permitted(self) -> bool:
+        """Return explicit credential-sync permission for the usable session."""
+        return bool(self.access_token()) and bool(
+            self._settings.get(
+                ACTIVITY_RETRO_ACHIEVEMENTS_CREDENTIAL_SYNC_SETTING, bool
+            )
+        )
+
+    @staticmethod
+    def _serialized_credentials(
+        credentials: RetroAchievementsCredentials | None,
+    ) -> dict[str, str] | None:
+        """Serialize credentials only at the settings boundary."""
+        if credentials is None:
+            return None
+        return {"userName": credentials.username, "apiKey": credentials.api_key}
+
     def save(
         self,
         token: str,
         expires_at: str,
+        retro_achievements_credential_sync: bool,
         retro_achievements: RetroAchievementsCredentials | None = None,
     ) -> None:
-        """Persist a token, expiry, and paired credentials together."""
+        """Persist a token, expiry, permission, and paired credentials together."""
         self._settings.update(
             {
                 ACCESS_TOKEN_SETTING: token,
                 ACCESS_TOKEN_EXPIRES_AT_SETTING: expires_at,
-                ACTIVITY_RETRO_ACHIEVEMENTS_SETTING: (
-                    {
-                        "userName": retro_achievements.username,
-                        "apiKey": retro_achievements.api_key,
-                    }
-                    if retro_achievements is not None
-                    else None
+                ACTIVITY_RETRO_ACHIEVEMENTS_CREDENTIAL_SYNC_SETTING: (
+                    retro_achievements_credential_sync
                 ),
-                LEGACY_RETRO_ACHIEVEMENTS_USERNAME_SETTING: None,
-                LEGACY_RETRO_ACHIEVEMENTS_API_KEY_SETTING: None,
+                ACTIVITY_RETRO_ACHIEVEMENTS_SETTING: self._serialized_credentials(
+                    retro_achievements
+                ),
             }
         )
+
+    def update_retro_achievements_credentials(
+        self,
+        token: str,
+        retro_achievements_credential_sync: bool,
+        retro_achievements: RetroAchievementsCredentials | None,
+    ) -> bool:
+        """Atomically replace only the still-current token's linked credentials."""
+        if not self.matches(token):
+            return False
+        self._settings.update(
+            {
+                ACTIVITY_RETRO_ACHIEVEMENTS_CREDENTIAL_SYNC_SETTING: (
+                    retro_achievements_credential_sync
+                ),
+                ACTIVITY_RETRO_ACHIEVEMENTS_SETTING: self._serialized_credentials(
+                    retro_achievements
+                ),
+            }
+        )
+        return True
 
     def clear(self) -> None:
         """Clear the session, paired credentials, and cached game recognitions."""
@@ -95,9 +131,8 @@ class SettingsTokenStore:
             {
                 ACCESS_TOKEN_SETTING: None,
                 ACCESS_TOKEN_EXPIRES_AT_SETTING: None,
+                ACTIVITY_RETRO_ACHIEVEMENTS_CREDENTIAL_SYNC_SETTING: None,
                 ACTIVITY_RETRO_ACHIEVEMENTS_SETTING: None,
-                LEGACY_RETRO_ACHIEVEMENTS_USERNAME_SETTING: None,
-                LEGACY_RETRO_ACHIEVEMENTS_API_KEY_SETTING: None,
                 "gameRecognitions": None,
             }
         )

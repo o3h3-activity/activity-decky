@@ -18,7 +18,7 @@ class SettingsStoreTests(BackendTestCase):
     """Verify typed atomic settings persistence behavior."""
 
     def test_update_merges_removes_and_enforces_file_mode(self) -> None:
-        """Persist merged settings, remove None values, and restrict file permissions."""
+        """Persist merged settings with secure permissions."""
         settings = self.settings()
         settings.update({"a": 1, "b": "x"})
         settings.update({"a": None})
@@ -104,6 +104,47 @@ class HttpClientTests(unittest.TestCase):
         self.assertIn("req-123", line)
         self.assertIn('"message":"route not found"', line)
         self.assertNotIn("secret-key", line)
+
+    def test_credential_responses_never_leak_into_diagnostics(self) -> None:
+        """Redact both error envelopes and malformed successful credential bodies."""
+        secrets = (
+            b'{"apiKey":"private-ra-key","userName":"private-user",'
+            b'"accessToken":"private-token"}'
+        )
+        for path in (
+            "/api/v1/auth/device/token",
+            "/api/v1/me/retroachievements/credentials",
+        ):
+            for status in (200, 403):
+                with self.subTest(path=path, status=status):
+                    url = f"https://example.test{path}"
+                    if status == 200:
+                        response = MagicMock()
+                        response.status = status
+                        response.headers = {}
+                        response.read.return_value = secrets + b"invalid"
+                        response.__enter__.return_value = response
+                        request = patch.object(
+                            http_client, "urlopen", return_value=response
+                        )
+                    else:
+                        error = HTTPError(
+                            url, status, "Forbidden", Message(), BytesIO(secrets)
+                        )
+                        request = patch.object(
+                            http_client, "urlopen", side_effect=error
+                        )
+                    with (
+                        request,
+                        self.assertLogs(decky.logger, level="WARNING") as logs,
+                    ):
+                        result = http_client.request_json_status(url)
+                    if status != 200:
+                        error.close()
+                    self.assertEqual(result.status, status)
+                    logged = "\n".join(logs.output)
+                    for secret in ("private-ra-key", "private-user", "private-token"):
+                        self.assertNotIn(secret, logged)
 
     def test_request_json_forwards_bearer_header(self) -> None:
         """Attach bearer credentials through the convenience JSON wrapper."""

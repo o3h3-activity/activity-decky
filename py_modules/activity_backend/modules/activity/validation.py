@@ -2,12 +2,9 @@
 
 from __future__ import annotations
 
-import re
-from typing import TypedDict, TypeGuard
+from typing import TypedDict
 
-UUID_PATTERN = re.compile(
-    r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
-)
+from activity_backend.identifiers import is_uuid
 
 
 class ActivityQuery(TypedDict):
@@ -58,8 +55,3 @@ def valid_comment_payload(
         "release_revision_id": release_revision_id,
         "body": body,
     }
-
-
-def is_uuid(value: object) -> TypeGuard[str]:
-    """Return whether a value is an RFC 4122-shaped UUID string."""
-    return isinstance(value, str) and UUID_PATTERN.fullmatch(value) is not None

@@ -1,4 +1,5 @@
 import type { Events } from "@events";
+import { provideGameSync } from "@stores/gameSync";
 import type { Emitter } from "nanoevents";
 import { Games } from "./games";
 import { LifetimeScope } from "./lifetimeScope";
@@ -21,6 +22,8 @@ export class Steam {
 			? scope.track(new PlayTime(steamId, games))
 			: undefined;
 		const patches = scope.track(new SessionPatches(games));
+
+		provideGameSync(scope, async (onProgress) => games.sync(onProgress));
 
 		return {
 			async mount(): Promise<void> {
