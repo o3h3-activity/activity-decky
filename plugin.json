@@ -4,8 +4,8 @@
 	"flags": [],
 	"api_version": 1,
 	"publish": {
-		"tags": [],
-		"description": "View game activity for Non-Steam Games",
-		"image": "https://opengraph.githubassets.com/1/SteamDeckHomebrew/PluginLoader"
+		"tags": ["social", "non-steam", "emulation"],
+		"description": "Bring social features to non-Steam games in Steam's interface. View friends' activity, share comments, and see RetroAchievements progress. Optionally share playtime with the PlayTime plugin.",
+		"image": "https://raw.githubusercontent.com/o3h3-activity/activity-decky/refs/heads/master/assets/logo.png"
 	}
 }
