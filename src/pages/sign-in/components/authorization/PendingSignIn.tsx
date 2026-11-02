@@ -1,8 +1,8 @@
 /* oxlint-disable react/forbid-component-props */
 import type { DeviceAuthorizationState } from "@api/account";
+import { QrCode } from "@components/QrCode";
 import { DialogButton } from "@decky/ui";
 import type { ReactElement } from "react";
-import { ActivitySettingsQrCode } from "./ActivitySettingsQrCode";
 import { FocusableButtonRow } from "./FocusableButtonRow";
 import { WaitingForApproval } from "./WaitingForApproval";
 
@@ -37,7 +37,10 @@ export function PendingSignIn({
 		<>
 			<div className="flex items-center gap-6">
 				<div className="w-[180px] shrink-0">
-					<ActivitySettingsQrCode url={qrUrl} />
+					<QrCode
+						title="QR code for the Activity access-tokens page"
+						url={qrUrl}
+					/>
 				</div>
 
 				<div className="flex min-w-0 flex-col gap-3">

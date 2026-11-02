@@ -1,7 +1,7 @@
 import encodeQR from "qr";
 import { type ReactElement, useMemo } from "react";
 
-const QR_SIZE = 180;
+const DEFAULT_QR_SIZE = 180;
 /** The quiet zone ISO/IEC 18004 recommends; Steam's dark background makes a narrower one unreliable. */
 const QR_BORDER_MODULES = 4;
 
@@ -22,20 +22,22 @@ function createQrVector(url: string): QrVector {
 	return { path, size: modules.length };
 }
 
-export function ActivitySettingsQrCode({
+export function QrCode({
+	size = DEFAULT_QR_SIZE,
+	title,
 	url,
-}: Readonly<{ url: string }>): ReactElement {
-	const { path, size } = useMemo(() => createQrVector(url), [url]);
+}: Readonly<{ size?: number; title: string; url: string }>): ReactElement {
+	const { path, size: vectorSize } = useMemo(() => createQrVector(url), [url]);
 
 	return (
 		<svg
 			xmlns="http://www.w3.org/2000/svg"
-			width={QR_SIZE}
-			height={QR_SIZE}
-			viewBox={`0 0 ${size} ${size}`}
+			width={size}
+			height={size}
+			viewBox={`0 0 ${vectorSize} ${vectorSize}`}
 			shapeRendering="crispEdges"
 		>
-			<title>QR code for the Activity access-tokens page</title>
+			<title>{title}</title>
 
 			<rect width="100%" height="100%" fill="#FFFFFF" />
 

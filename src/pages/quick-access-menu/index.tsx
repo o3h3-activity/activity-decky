@@ -4,6 +4,7 @@ import { showErrorToast } from "@ui/toasts";
 import logger from "@utils/logger";
 import { type ReactElement, useCallback, useState } from "react";
 import { ActivityAccountSettings } from "./components/ActivityAccountSettings";
+import { ActivityLinks } from "./components/ActivityLinks";
 import { ActivityStatusSettings } from "./components/ActivityStatusSettings";
 
 async function saveDebugSetting(enabled: boolean): Promise<void> {
@@ -42,6 +43,8 @@ export function ActivitySettings(): ReactElement {
 					/>
 				</PanelSectionRow>
 			</PanelSection>
+
+			<ActivityLinks />
 		</>
 	);
 }
