@@ -55,7 +55,7 @@ export default defineConfig([
 
 	pluginReact.configs.flat.recommended,
 	{
-		settings: { react: { version: "19.1.0" } },
+		settings: { react: { version: "19.1.1" } },
 		rules: {
 			"react/prop-types": "off",
 		},

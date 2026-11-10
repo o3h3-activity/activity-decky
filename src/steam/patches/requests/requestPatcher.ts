@@ -151,7 +151,7 @@ export abstract class SteamRequestPatcher {
 
 				outcome = await Promise.race([
 					request,
-					cancelToken.promise.then(onCancel, onCancel),
+					cancelToken.promise.then(onCancel).catch(onCancel),
 				]);
 			}
 		} catch (error) {

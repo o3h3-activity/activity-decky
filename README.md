@@ -50,9 +50,9 @@ The plugin settings show account status and game-detection availability. Enable 
 | Tool | Version / purpose |
 | --- | --- |
 | Node.js | 24, as used in CI |
-| pnpm | 12.5.1, as used in CI |
+| pnpm | 12.18.0, as used in CI |
 | Python | 3.11 or newer; CI tests 3.11 and 3.14 |
-| [uv](https://docs.astral.sh/uv/) | Python environment and dependency management; CI uses 0.12.5 |
+| [uv](https://docs.astral.sh/uv/) | Python environment and dependency management; CI uses 0.13.7 |
 | Git | Submodule checkout for `game-anatomy` |
 | [Decky CLI](https://github.com/SteamDeckHomebrew/cli) | Installable package builds; CI uses 0.0.8 |
 | Docker | Containerized native backend build |

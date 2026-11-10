@@ -223,6 +223,8 @@ export class UserStatusDeleteConfirmationModalPatcher {
 			}
 		};
 
-		void modal.closed?.then(forgetModal, forgetModal);
+		if (modal.closed) {
+			void Promise.resolve(modal.closed).then(forgetModal).catch(forgetModal);
+		}
 	}
 }

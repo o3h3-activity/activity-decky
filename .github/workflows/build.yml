@@ -19,12 +19,12 @@ jobs:
       matrix:
         python-version: ["3.11", "3.14"]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
-      - uses: astral-sh/setup-uv@v7
+      - uses: astral-sh/setup-uv@v10
         with:
-          version: "0.12.5"
+          version: "0.13.7"
           python-version: ${{ matrix.python-version }}
           enable-cache: true
       - name: Lint Python
@@ -43,13 +43,13 @@ jobs:
     name: Frontend quality
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
         with:
-          version: "12.5.1"
-      - uses: actions/setup-node@v4
+          version: "12.18.0"
+      - uses: actions/setup-node@v7
         with:
           node-version: "24"
           cache: pnpm
@@ -66,7 +66,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out plugin source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           persist-credentials: false
 
@@ -92,7 +92,7 @@ jobs:
         run: decky plugin build . --output-path out
 
       - name: Set up packaged smoke test
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: "3.11"
 
@@ -135,7 +135,7 @@ jobs:
         run: python -m zipfile -e out/Activity.zip artifact
 
       - name: Upload installable package
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: Activity
           path: artifact/
@@ -150,7 +150,7 @@ jobs:
       contents: write
     steps:
       - name: Download installable package
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: Activity
           path: release
