@@ -21,21 +21,24 @@
 	},
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/SteamDeckHomebrew/decky-plugin-template.git"
+		"url": "git+https://github.com/o3h3-activity/activity-decky.git"
 	},
 	"keywords": [
 		"decky",
 		"plugin",
-		"plugin-template",
+		"activity",
 		"steam-deck",
-		"deck"
+		"deck",
+		"social",
+		"non-steam",
+		"emulation"
 	],
-	"author": "You <you@you.tld>",
+	"author": "ynhhoJ <22500212+ynhhoJ@users.noreply.github.com",
 	"license": "BSD-3-Clause",
 	"bugs": {
-		"url": "https://github.com/SteamDeckHomebrew/decky-plugin-template/issues"
+		"url": "https://github.com/o3h3-activity/activity-decky/issues"
 	},
-	"homepage": "https://github.com/SteamDeckHomebrew/decky-plugin-template#readme",
+	"homepage": "https://github.com/o3h3-activity/activity-decky#readme",
 	"devDependencies": {
 		"@biomejs/biome": "2.6.8",
 		"@decky/ui": "4.16.5",
