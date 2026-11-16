@@ -164,7 +164,9 @@ describe("refreshActivityAccount", () => {
 	it("refreshes credentials once on sign-in without reviving a newer signed-out snapshot", async () => {
 		const refreshed = Promise.withResolvers<DeviceAuthorizationState>();
 
-		boundary.syncRetroAchievementsCredentials.mockReturnValue(refreshed.promise);
+		boundary.syncRetroAchievementsCredentials.mockReturnValue(
+			refreshed.promise,
+		);
 		const account = await mountAccount(Promise.resolve(SIGNED_IN));
 
 		expect(boundary.syncRetroAchievementsCredentials).toHaveBeenCalledOnce();

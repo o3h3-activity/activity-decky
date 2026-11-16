@@ -574,7 +574,9 @@ describe("Games.sync", () => {
 		const partial = library();
 
 		partial.shortcuts = [1, 2];
-		partial.locate.mockRejectedValueOnce(new Error("Steam details unavailable"));
+		partial.locate.mockRejectedValueOnce(
+			new Error("Steam details unavailable"),
+		);
 		mocks.batches.mockImplementation(answerAll);
 		const games = new Games(partial);
 		const onProgress = vi.fn<GameSyncListener>();

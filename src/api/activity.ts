@@ -2,7 +2,8 @@ import type { components } from "../../steam-deck-api";
 import { authorizationGate } from "./account";
 import { mutationRpc, rpc } from "./rpc/transport";
 
-export type ProfileGamesResponse = components["schemas"]["ProfileGamesResponse"];
+export type ProfileGamesResponse =
+	components["schemas"]["ProfileGamesResponse"];
 export type RecentPlaytimeResponse =
 	components["schemas"]["RecentPlaytimeResponse"];
 
@@ -35,7 +36,8 @@ export const getFriendsGameplay = authorizationGate.guardResult(
 );
 
 /** Lists played or voted release versions from `/api/v1/me/games`, optionally after a cursor. */
-export const getProfileGames = authorizationGate.guardResult("get_profile_games");
+export const getProfileGames =
+	authorizationGate.guardResult("get_profile_games");
 
 /** Gets recent release-version playtime from `/api/v1/me/playtime/recent`. */
 export const getRecentPlaytime = authorizationGate.guardResult(
