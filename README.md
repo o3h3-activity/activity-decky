@@ -1,7 +1,20 @@
 # Activity
 
-[![License](https://img.shields.io/badge/license-BSD%203--Clause-blue.svg)](LICENSE)
-[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/ynhhoj)
+<div align="center">
+
+  [![License](https://img.shields.io/badge/license-BSD%203--Clause-blue.svg)](LICENSE)
+  ![Testing store Downloads](https://img.shields.io/badge/dynamic/json?url=https://testing.deckbrew.xyz/plugins?query=Activity&query=$[:1].downloads&suffix=%20installs&label=Testing%20store)
+  ![Testing store Updates](https://img.shields.io/badge/dynamic/json?url=https://testing.deckbrew.xyz/plugins?query=Activity&query=$[:1].updates&suffix=%20updates&label=Testing%20store)
+  ![Stable store Downloads](https://img.shields.io/badge/dynamic/json?url=https://plugins.deckbrew.xyz/plugins?query=Activity&query=$[:1].downloads&suffix=%20installs&label=Stable%20store)
+  ![Stable store Updates](https://img.shields.io/badge/dynamic/json?url=https://plugins.deckbrew.xyz/plugins?query=Activity&query=$[:1].updates&suffix=%20updates&label=Stable%20store)
+
+</div>
+
+<div align="center">
+
+  [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/ynhhoj)
+
+</div>
 
 Activity is a [Decky Loader](https://github.com/SteamDeckHomebrew/decky-loader) plugin that brings game activity to non-Steam games on Steam Deck. It connects supported games to the [Activity service](https://activity.o3h3.com) and integrates their activity into Steam's game interface.
 
