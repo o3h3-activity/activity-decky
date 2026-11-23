@@ -55,8 +55,8 @@ const INITIAL_OLDEST_ACTIVITY_TIME = 4_294_967_295;
 
 type SteamUserNewsPatcherDependencies = Readonly<{
 	games: Games;
-	userStatus: UserStatusPatcher;
-	virtualFriendPatcher: VirtualFriendPatcher;
+	userStatus: Pick<UserStatusPatcher, "isInstalled" | "register">;
+	virtualFriendPatcher: Pick<VirtualFriendPatcher, "isInstalled" | "register">;
 }>;
 
 /**
@@ -88,8 +88,8 @@ export class SteamUserNewsPatcher {
 	private readonly announcementHandler: AnnouncementUserNewsEventHandler;
 	private readonly feedHandlers: readonly UserNewsFeedEventHandler[];
 	private readonly games: Games;
-	private readonly userStatus: UserStatusPatcher;
-	private readonly virtualFriendPatcher: VirtualFriendPatcher;
+	private readonly userStatus: SteamUserNewsPatcherDependencies["userStatus"];
+	private readonly virtualFriendPatcher: SteamUserNewsPatcherDependencies["virtualFriendPatcher"];
 
 	constructor(
 		provider: AchievementsProvider,

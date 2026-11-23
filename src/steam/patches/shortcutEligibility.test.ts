@@ -2,7 +2,7 @@
 import { EAppType } from "@decky/ui/dist/globals/steam-client/App";
 import { Games } from "@steam/games";
 import { DiscIdentity, type Game } from "@steam/games/game";
-import type { Identity } from "@steam/games/identity";
+import { Identity } from "@steam/games/identity";
 import { isNil } from "es-toolkit";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { isSupportedShortcut } from "./shortcutEligibility";
@@ -21,12 +21,12 @@ const DISC = DiscIdentity.fromResult({
 });
 
 function createIdentity(): Identity {
-	return {
+	return Object.assign(new Identity(), {
 		shortcutAppIds: () => [],
 		locate: async () => ROM_PATH,
 		identify: async (games: readonly Game[]) =>
 			games.map((game) => game.identifiedAs(DISC)),
-	};
+	});
 }
 
 function setOverview(appType?: EAppType): void {

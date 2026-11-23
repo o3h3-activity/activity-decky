@@ -44,7 +44,8 @@ vi.mock(
 		}) as never,
 );
 
-import { DiscIdentity, type Game } from "./game";
+import { DiscIdentity } from "./game";
+import { Identity } from "./identity";
 import { Games } from "./index";
 
 type CatalogAnswer = Omit<GameRecognitionResult, "gameIdentityMd5">;
@@ -73,15 +74,15 @@ const ICO_RELEASE: CatalogAnswer = {
 	releaseRevisionId: "revision-ico-us",
 };
 
-class FakeIdentity {
+class FakeIdentity extends Identity {
 	shortcuts: readonly number[] | undefined = SHORTCUTS;
 
-	readonly locate = vi.fn<(appId: number) => Promise<string | undefined>>(
+	override readonly locate = vi.fn<Identity["locate"]>(
 		async (appId) => FakeIdentity.ROMS.get(appId),
 	);
 
 	/** Only Ico's disc is identifiable, like an unsupported or unreadable image. */
-	readonly identify = vi.fn<(games: readonly Game[]) => Promise<Game[]>>(
+	override readonly identify = vi.fn<Identity["identify"]>(
 		async (games) =>
 			games.map((game) =>
 				game.romPath === ICO_PATH ? game.identifiedAs(ICO_DISC) : game,
@@ -93,7 +94,7 @@ class FakeIdentity {
 		[FINAL_FANTASY_ID, FINAL_FANTASY_PATH],
 	]);
 
-	shortcutAppIds(): readonly number[] | undefined {
+	override shortcutAppIds(): readonly number[] | undefined {
 		return this.shortcuts;
 	}
 }
@@ -577,6 +578,7 @@ describe("Games.sync", () => {
 		partial.locate.mockRejectedValueOnce(
 			new Error("Steam details unavailable"),
 		);
+
 		mocks.batches.mockImplementation(answerAll);
 		const games = new Games(partial);
 		const onProgress = vi.fn<GameSyncListener>();

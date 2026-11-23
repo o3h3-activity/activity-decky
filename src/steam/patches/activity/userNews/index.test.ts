@@ -14,12 +14,7 @@ import type { SteamQueryClient } from "@typings/queryClient";
 import { isObjectLike } from "@utils/isObjectLike";
 import type logger from "@utils/logger";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { UserStatusPatcher } from "../userStatus";
-import {
-	type RegisteredUserStatus,
-	UserStatusRegistry,
-} from "../userStatus/statusRegistry";
-import type { VirtualFriendPatcher } from "../virtualFriends";
+import { UserStatusRegistry } from "../userStatus/statusRegistry";
 
 type DeckyUiModule = {
 	callOriginal: typeof callOriginal;
@@ -229,9 +224,9 @@ function createPatcher(): SteamUserNewsPatcher {
 			} as unknown as Games,
 			userStatus: {
 				isInstalled: true,
-				register: (status: RegisteredUserStatus) => statuses.register(status),
-			} as UserStatusPatcher,
-			virtualFriendPatcher: { isInstalled: true } as VirtualFriendPatcher,
+				register: (status) => statuses.register(status),
+			},
+			virtualFriendPatcher: { isInstalled: true, register: () => false },
 		},
 	);
 

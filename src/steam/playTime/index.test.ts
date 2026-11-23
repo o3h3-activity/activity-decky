@@ -8,7 +8,7 @@ import {
 } from "@decky/ui/dist/globals/steam-client/system/network";
 import { observable } from "@legendapp/state";
 import type { Games } from "@steam/games";
-import type { Game, GameRelease } from "@steam/games/game";
+import { DiscIdentity, Game, GameRelease } from "@steam/games/game";
 import { accountStore } from "@stores/account";
 import { playTimeSyncStore } from "@stores/playTimeSync";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -75,13 +75,22 @@ const UNKNOWN_DELIVERY: ApiFailure = {
 	status: 503,
 };
 const UNREACHABLE: ApiFailure = { error: "unreachable", ok: false, status: 0 };
-const release = {
-	gameId: "game",
-	releaseId: "release",
-	revisionId: "revision",
-} as GameRelease;
-const discGame = { disc: {} } as Game;
 const interval: PendingPlaytime = { appId: 42, endedAt: 2000, startedAt: 1000 };
+const unidentifiedGame = Game.launching(interval.appId, "/roms/Ico.iso");
+const disc = DiscIdentity.fromResult({
+	appId: interval.appId,
+	game_identity_md5: "0123456789abcdef0123456789abcdef",
+	platform: "ps2",
+	rcheevos_id: 21,
+	serial: "SCUS-97113",
+});
+const discGame = unidentifiedGame.identifiedAs(disc);
+const release = GameRelease.fromAnswer({
+	gameId: "game",
+	gameIdentityMd5: disc.md5,
+	releaseId: "release",
+	releaseRevisionId: "revision",
+});
 const laterInterval: PendingPlaytime = {
 	appId: 42,
 	endedAt: 5000,
@@ -313,7 +322,7 @@ describe("PlayTime collection", () => {
 		expect(mocks.enqueue).not.toHaveBeenCalled();
 
 		playTime?.unMount();
-		mount(vi.fn<Games["get"]>().mockResolvedValue({} as Game));
+		mount(vi.fn<Games["get"]>().mockResolvedValue(unidentifiedGame));
 		supportedCommit();
 		await Promise.resolve();
 		expect(mocks.enqueue).not.toHaveBeenCalled();

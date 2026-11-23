@@ -77,7 +77,6 @@ export default defineConfig({
 		sourcemap: true,
 		rolldownOptions: {
 			context: "window",
-			external: ["react", "react-dom", "@decky/ui"],
 			output: {
 				dir: "dist",
 				format: "esm",

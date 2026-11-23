@@ -18,7 +18,9 @@ export class UserStatusUserNewsEventHandler extends UserNewsFeedEventHandler<"us
 	protected readonly kind = "user_status";
 	protected readonly eventType = SteamUserNewsEventType.UserStatus;
 
-	constructor(private readonly userStatus: UserStatusPatcher) {
+	constructor(
+		private readonly userStatus: Pick<UserStatusPatcher, "register">,
+	) {
 		super();
 	}
 

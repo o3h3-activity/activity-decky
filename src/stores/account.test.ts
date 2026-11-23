@@ -167,6 +167,7 @@ describe("refreshActivityAccount", () => {
 		boundary.syncRetroAchievementsCredentials.mockReturnValue(
 			refreshed.promise,
 		);
+
 		const account = await mountAccount(Promise.resolve(SIGNED_IN));
 
 		expect(boundary.syncRetroAchievementsCredentials).toHaveBeenCalledOnce();

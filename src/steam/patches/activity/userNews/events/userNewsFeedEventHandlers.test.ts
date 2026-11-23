@@ -99,7 +99,7 @@ describe("user news feed event handlers", () => {
 		const register = vi.fn<(input: unknown) => void>();
 		const result = await new UserStatusUserNewsEventHandler({
 			register,
-		} as never).createFromFeed(
+		}).createFromFeed(
 			[
 				{
 					actor: ACTOR,

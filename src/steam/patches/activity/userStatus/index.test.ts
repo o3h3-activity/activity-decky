@@ -8,7 +8,7 @@ import type {
 } from "@decky/ui";
 import type { EResult } from "@decky/ui/dist/globals/steam-client/shared";
 import type { Games } from "@steam/games";
-import type { GameRelease } from "@steam/games/game";
+import { GameRelease } from "@steam/games/game";
 import type { AppActivityStore } from "@steam/proxy/appActivityStore";
 import type { AppStore } from "@steam/proxy/appStore";
 import type { PlayerService } from "@steam/proxy/playerService";
@@ -186,10 +186,15 @@ describe("UserStatusPatcher", () => {
 	});
 
 	it("does not delete a shortcut comment whose Activity release is unpublished", async () => {
-		mocks.getRelease.mockResolvedValue({
-			gameId: "game",
-			revisionId: "revision",
-		} as GameRelease);
+		mocks.getRelease.mockResolvedValue(
+			GameRelease.fromAnswer({
+				gameId: "game",
+				gameIdentityMd5: "0123456789abcdef0123456789abcdef",
+				// oxlint-disable-next-line unicorn/no-null -- The catalog reports an unpublished release as null.
+				releaseId: null,
+				releaseRevisionId: "revision",
+			}),
+		);
 
 		const patcher = new UserStatusPatcher({
 			getRelease: mocks.getRelease,
